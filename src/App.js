@@ -2,15 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
 const PROMPTS = [
-  { text: "User cannot log into their laptop. Password reset needed.", complexity: "simple", model: "GPT-4o-mini", costPer1k: 0.00015 },
-  { text: "Printer on floor 3 is offline. No one can print.", complexity: "simple", model: "GPT-4o-mini", costPer1k: 0.00015 },
-  { text: "User requesting access to the shared marketing drive.", complexity: "simple", model: "GPT-4o-mini", costPer1k: 0.00015 },
-  { text: "Outlook not syncing emails since this morning. VPN is connected.", complexity: "medium", model: "GPT-4o-mini", costPer1k: 0.00015 },
-  { text: "Teams calls dropping every 20 minutes after Windows update.", complexity: "medium", model: "GPT-4o-mini", costPer1k: 0.00015 },
-  { text: "SharePoint permissions broken after admin changes. Three users affected.", complexity: "medium", model: "GPT-4o", costPer1k: 0.005 },
-  { text: "47 users cannot access Azure Virtual Desktop across three sites.", complexity: "complex", model: "GPT-4o", costPer1k: 0.005 },
-  { text: "Conditional Access policy blocking all MFA accounts from M365. Tenant-wide.", complexity: "complex", model: "GPT-4o", costPer1k: 0.005 },
-  { text: "Azure AD Connect sync failing after domain controller migration.", complexity: "complex", model: "GPT-4o", costPer1k: 0.005 },
+  { text: "User cannot log into their laptop. Password reset needed.", complexity: "simple", model: "GPT-4o-mini", costPer1k: 0.00015, risk: "low" },
+  { text: "Printer on floor 3 is offline. No one can print.", complexity: "simple", model: "GPT-4o-mini", costPer1k: 0.00015, risk: "low" },
+  { text: "User requesting access to the shared marketing drive.", complexity: "simple", model: "GPT-4o-mini", costPer1k: 0.00015, risk: "low" },
+  { text: "Outlook not syncing emails since this morning. VPN is connected.", complexity: "medium", model: "GPT-4o-mini", costPer1k: 0.00015, risk: "low" },
+  { text: "Teams calls dropping every 20 minutes after Windows update.", complexity: "medium", model: "GPT-4o-mini", costPer1k: 0.00015, risk: "medium" },
+  { text: "SharePoint permissions broken after admin changes. Three users affected.", complexity: "medium", model: "GPT-4o", costPer1k: 0.005, risk: "medium" },
+  { text: "47 users cannot access Azure Virtual Desktop across three sites.", complexity: "complex", model: "GPT-4o", costPer1k: 0.005, risk: "high" },
+  { text: "Conditional Access policy blocking all MFA accounts from M365. Tenant-wide.", complexity: "complex", model: "GPT-4o", costPer1k: 0.005, risk: "high" },
+  { text: "Azure AD Connect sync failing after domain controller migration.", complexity: "complex", model: "GPT-4o", costPer1k: 0.005, risk: "high" },
 ];
 
 const THRESHOLD = 0.0003;
@@ -61,6 +61,7 @@ function App() {
           prompt: prompt.text,
           complexity: prompt.complexity,
           model: prompt.model,
+          risk: prompt.risk,
           tokens,
           cost: cost.toFixed(6),
           savings: savings > 0 ? savings.toFixed(6) : 'N/A',
@@ -106,78 +107,105 @@ function App() {
 
   return (
     <div className="app">
-      <header className="header">
-        <div className="header-left">
-          <span className="eyebrow">INSIGHT MANAGED SERVICES</span>
-          <h1 className="title">Project FuseBox</h1>
-          <span className="subtitle">Enterprise AI FinOps Platform</span>
-        </div>
-        <div className="header-right">
-          <div className="metric-box">
-            <span className="metric-label">Total Spend</span>
-            <span className="metric-value">${totalCost.toFixed(4)}</span>
-          </div>
-          <div className="metric-box savings">
-            <span className="metric-label">Total Savings</span>
-            <span className="metric-value">${totalSavings.toFixed(4)}</span>
-          </div>
-          <div className="metric-box">
-            <span className="metric-label">Smart Routes</span>
-            <span className="metric-value">{cheapCount} of {cheapCount + expensiveCount} optimized</span>
-          </div>
-        </div>
-      </header>
 
-      {alertActive && (
-        <div className="alert-banner">
-          ⚠️ Budget threshold of ${THRESHOLD} reached — review AI spend immediately
+      <div className="fixed-panel">
+
+        <header className="header">
+          <div className="header-left">
+            <span className="eyebrow">INSIGHT MANAGED SERVICES</span>
+            <h1 className="title">Project FuseBox</h1>
+            <span className="subtitle">Enterprise AI FinOps Platform</span>
+          </div>
+          <div className="header-right">
+            <div className="metric-box">
+              <span className="metric-label">Total Spend</span>
+              <span className="metric-value">${totalCost.toFixed(4)}</span>
+            </div>
+            <div className="metric-box savings">
+              <span className="metric-label">Total Savings</span>
+              <span className="metric-value">${totalSavings.toFixed(4)}</span>
+            </div>
+            <div className="metric-box">
+              <span className="metric-label">Smart Routes</span>
+              <span className="metric-value">{cheapCount} of {cheapCount + expensiveCount} optimized</span>
+            </div>
+          </div>
+        </header>
+
+        {alertActive && (
+          <div className="alert-banner">
+            ⚠️ Budget threshold of ${THRESHOLD} reached — review AI spend immediately
+          </div>
+        )}
+
+        <div className="controls">
+          <button className="btn-primary" onClick={() => setRunning(true)} disabled={running}>
+            Run Demo
+          </button>
+          <button className="btn-pause" onClick={() => setRunning(false)} disabled={!running}>
+            Pause
+          </button>
+          <button className="btn-secondary" onClick={handleReset}>
+            Reset
+          </button>
         </div>
-      )}
 
-      <div className="controls">
-        <button className="btn-primary" onClick={() => setRunning(true)} disabled={running}>
-          Run Demo
-        </button>
-        <button className="btn-pause" onClick={() => setRunning(false)} disabled={!running}>
-          Pause
-        </button>
-        <button className="btn-secondary" onClick={handleReset}>
-          Reset
-        </button>
-      </div>
-
-      <div className="comparison-container">
-        <h2 className="section-title">Model Cost Comparison</h2>
-        <div className="comparison-cards">
-          <div className="comparison-card cheap">
-            <span className="comparison-card-title">GPT-4o-mini</span>
-            <span className="comparison-card-label">Optimized Model</span>
-            <span className="comparison-card-cost">${cheapCost.toFixed(6)}</span>
-            <span className="comparison-card-requests">{cheapCount} requests routed here</span>
-          </div>
-          <div className="comparison-card expensive">
-            <span className="comparison-card-title">GPT-4o</span>
-            <span className="comparison-card-label">Premium Model</span>
-            <span className="comparison-card-cost">${expensiveCost.toFixed(6)}</span>
-            <span className="comparison-card-requests">{expensiveCount} requests routed here</span>
-          </div>
-          <div className="comparison-card baseline">
-            <span className="comparison-card-title">No Optimization</span>
-            <span className="comparison-card-label">If All GPT-4o</span>
-            <span className="comparison-card-cost">${(totalCost + totalSavings).toFixed(6)}</span>
-            <span className="comparison-card-requests">estimated cost without FuseBox</span>
-          </div>
-          <div className="comparison-card savings-card">
-            <span className="comparison-card-title">You Saved</span>
-            <span className="comparison-card-label">Total Savings</span>
-            <span className="comparison-card-cost">${totalSavings.toFixed(6)}</span>
-            <span className="comparison-card-requests">by routing to cheaper models</span>
+        <div className="comparison-container">
+          <div className="comparison-cards">
+            <div className="comparison-card cheap">
+              <span className="comparison-card-title">GPT-4o-mini</span>
+              <span className="comparison-card-label">Optimized Model</span>
+              <span className="comparison-card-cost">${cheapCost.toFixed(6)}</span>
+              <span className="comparison-card-requests">{cheapCount} requests</span>
+            </div>
+            <div className="comparison-card expensive">
+              <span className="comparison-card-title">GPT-4o</span>
+              <span className="comparison-card-label">Premium Model</span>
+              <span className="comparison-card-cost">${expensiveCost.toFixed(6)}</span>
+              <span className="comparison-card-requests">{expensiveCount} requests</span>
+            </div>
+            <div className="comparison-card baseline">
+              <span className="comparison-card-title">No Optimization</span>
+              <span className="comparison-card-label">If All GPT-4o</span>
+              <span className="comparison-card-cost">${(totalCost + totalSavings).toFixed(6)}</span>
+              <span className="comparison-card-requests">estimated</span>
+            </div>
+            <div className="comparison-card savings-card">
+              <span className="comparison-card-title">You Saved</span>
+              <span className="comparison-card-label">Total Savings</span>
+              <span className="comparison-card-cost">${totalSavings.toFixed(6)}</span>
+              <span className="comparison-card-requests">by smart routing</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="log-container">
-        <h2 className="section-title">Live Routing Decisions</h2>
+        <div className="summary-bar">
+          <div className="summary-item">
+            <span className="summary-value">{cheapCount + expensiveCount}</span>
+            <span className="summary-label">Total Processed</span>
+          </div>
+          <div className="summary-item">
+            <span className="summary-value">{cheapCount}</span>
+            <span className="summary-label">Routed to Mini</span>
+          </div>
+          <div className="summary-item">
+            <span className="summary-value">{expensiveCount}</span>
+            <span className="summary-label">Routed to GPT-4o</span>
+          </div>
+          <div className="summary-item highlight">
+            <span className="summary-value">
+              {cheapCount + expensiveCount > 0 ? Math.round((cheapCount / (cheapCount + expensiveCount)) * 100) : 0}%
+            </span>
+            <span className="summary-label">Optimization Rate</span>
+          </div>
+          <div className="summary-item highlight">
+            <span className="summary-value">
+              {((totalCost + totalSavings) > 0 ? (totalSavings / (totalCost + totalSavings)) * 100 : 0).toFixed(1)}%
+            </span>
+            <span className="summary-label">Cost Reduction</span>
+          </div>
+        </div>
+
         <div className="legend">
           <div className="legend-item">
             <span className="legend-bar simple"></span>
@@ -192,6 +220,14 @@ function App() {
             <span className="legend-label">Complex — GPT-4o — Highest Cost</span>
           </div>
         </div>
+
+        <div className="log-header-bar">
+          <h2 className="section-title">Live Routing Decisions</h2>
+        </div>
+
+      </div>
+
+      <div className="scroll-panel">
         {log.length === 0 && (
           <p className="empty-state">Press Run Demo to begin routing simulation</p>
         )}
@@ -205,6 +241,9 @@ function App() {
                 </span>
                 <span className={`badge complexity-${entry.complexity}`}>
                   {entry.complexity}
+                </span>
+                <span className={`badge risk-${entry.risk}`}>
+                  {entry.risk} risk
                 </span>
               </div>
               <p className="log-prompt">{entry.prompt}</p>
@@ -225,6 +264,7 @@ function App() {
         <span className="footer-divider">|</span>
         <span className="footer-hackathon">Insight Hackathon 2026</span>
       </footer>
+
     </div>
   );
 }
