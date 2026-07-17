@@ -266,3 +266,89 @@ body {
     gap: 4px;
   }
 }
+
+/* FOOTER */
+.footer {
+  background-color: #582873;
+  color: #f0c0e8;
+  padding: 14px 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  width: 100%;
+}
+
+.footer-team {
+  color: white;
+  font-weight: bold;
+}
+
+.footer-project {
+  color: #f0c0e8;
+}
+
+.footer-hackathon {
+  color: #f0c0e8;
+}
+
+.footer-divider {
+  color: #D30E8C;
+  font-weight: bold;
+}
+
+.btn-pause {
+  background-color: #582873;
+  color: white;
+  border: none;
+  padding: 12px 36px;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: Arial, sans-serif;
+}
+
+.btn-pause:hover {
+  background-color: #3d1a52;
+}
+
+.btn-pause:disabled {
+  background-color: #aaa;
+  cursor: not-allowed;
+}
+
+/* LEGEND */
+.legend {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-bar {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.legend-bar.simple { background-color: #4F93D9; }
+.legend-bar.medium { background-color: #f0a500; }
+.legend-bar.complex { background-color: #D30E8C; }
+
+.legend-label {
+  font-size: 12px;
+  color: #555;
+}
+

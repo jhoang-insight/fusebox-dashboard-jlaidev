@@ -38,30 +38,34 @@ function App() {
     if (!running) return;
 
     let index = 0;
+    let shuffled = [...PROMPTS].sort(() => Math.random() - 0.5);
 
     intervalRef.current = setInterval(() => {
-      if (index >= PROMPTS.length) {
-        clearInterval(intervalRef.current);
-        setRunning(false);
-        return;
+      if (index >= shuffled.length) {
+        index = 0;
+        shuffled = [...PROMPTS].sort(() => Math.random() - 0.5);
       }
 
-      const prompt = PROMPTS[index];
+      const prompt = shuffled[index];
       const tokens = getTokenCount(prompt.text);
       const cost = getCost(tokens, prompt.costPer1k);
       const expensiveCost = getCost(tokens, EXPENSIVE_MODEL_COST);
       const savings = expensiveCost - cost;
 
-      setLog(prev => [{
-        id: Date.now(),
-        timestamp: new Date().toLocaleTimeString(),
-        prompt: prompt.text,
-        complexity: prompt.complexity,
-        model: prompt.model,
-        tokens,
-        cost: cost.toFixed(6),
-        savings: savings > 0 ? savings.toFixed(6) : 'N/A',
-      }, ...prev]);
+      setLog(prev => {
+        const newEntry = {
+          id: Date.now(),
+          timestamp: new Date().toLocaleTimeString(),
+          prompt: prompt.text,
+          complexity: prompt.complexity,
+          model: prompt.model,
+          tokens,
+          cost: cost.toFixed(6),
+          savings: savings > 0 ? savings.toFixed(6) : 'N/A',
+        };
+        const updated = [newEntry, ...prev];
+        return updated.slice(0, 20);
+      });
 
       setTotalCost(prev => {
         const newTotal = prev + cost;
@@ -125,16 +129,35 @@ function App() {
       )}
 
       <div className="controls">
-        <button className="btn-primary" onClick={() => setRunning(true)} disabled={running}>
-          Run Demo
-        </button>
-        <button className="btn-secondary" onClick={handleReset}>
-          Reset
-        </button>
-      </div>
+  <button className="btn-primary" onClick={() => setRunning(true)} disabled={running}>
+    Run Demo
+  </button>
+  <button className="btn-pause" onClick={() => setRunning(false)} disabled={!running}>
+    Pause
+  </button>
+  <button className="btn-secondary" onClick={handleReset}>
+    Reset
+  </button>
+</div>
+
 
       <div className="log-container">
         <h2 className="section-title">Live Routing Decisions</h2>
+<div className="legend">
+  <div className="legend-item">
+    <span className="legend-bar simple"></span>
+    <span className="legend-label">Simple — GPT-4o-mini — Lowest Cost</span>
+  </div>
+  <div className="legend-item">
+    <span className="legend-bar medium"></span>
+    <span className="legend-label">Medium — GPT-4o-mini or GPT-4o</span>
+  </div>
+  <div className="legend-item">
+    <span className="legend-bar complex"></span>
+    <span className="legend-label">Complex — GPT-4o — Highest Cost</span>
+  </div>
+</div>
+
         {log.length === 0 && (
           <p className="empty-state">Press Run Demo to begin routing simulation</p>
         )}
@@ -160,6 +183,14 @@ function App() {
           ))}
         </div>
       </div>
+
+      <footer className="footer">
+        <span className="footer-team">Team Token Burners</span>
+        <span className="footer-divider">|</span>
+        <span className="footer-project">Project FuseBox — Enterprise AI FinOps Platform</span>
+        <span className="footer-divider">|</span>
+        <span className="footer-hackathon">Insight Hackathon 2026</span>
+      </footer>
     </div>
   );
 }
