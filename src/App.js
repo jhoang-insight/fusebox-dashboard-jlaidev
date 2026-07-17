@@ -32,6 +32,8 @@ function App() {
   const [running, setRunning] = useState(false);
   const [cheapCount, setCheapCount] = useState(0);
   const [expensiveCount, setExpensiveCount] = useState(0);
+  const [cheapCost, setCheapCost] = useState(0);
+  const [expensiveCost, setExpensiveCost] = useState(0);
   const intervalRef = useRef(null);
 
   useEffect(() => {
@@ -49,8 +51,8 @@ function App() {
       const prompt = shuffled[index];
       const tokens = getTokenCount(prompt.text);
       const cost = getCost(tokens, prompt.costPer1k);
-      const expensiveCost = getCost(tokens, EXPENSIVE_MODEL_COST);
-      const savings = expensiveCost - cost;
+      const expensiveCostVal = getCost(tokens, EXPENSIVE_MODEL_COST);
+      const savings = expensiveCostVal - cost;
 
       setLog(prev => {
         const newEntry = {
@@ -77,8 +79,10 @@ function App() {
 
       if (prompt.model === 'GPT-4o-mini') {
         setCheapCount(prev => prev + 1);
+        setCheapCost(prev => prev + cost);
       } else {
         setExpensiveCount(prev => prev + 1);
+        setExpensiveCost(prev => prev + cost);
       }
 
       index++;
@@ -96,6 +100,8 @@ function App() {
     setRunning(false);
     setCheapCount(0);
     setExpensiveCount(0);
+    setCheapCost(0);
+    setExpensiveCost(0);
   };
 
   return (
@@ -129,35 +135,63 @@ function App() {
       )}
 
       <div className="controls">
-  <button className="btn-primary" onClick={() => setRunning(true)} disabled={running}>
-    Run Demo
-  </button>
-  <button className="btn-pause" onClick={() => setRunning(false)} disabled={!running}>
-    Pause
-  </button>
-  <button className="btn-secondary" onClick={handleReset}>
-    Reset
-  </button>
-</div>
+        <button className="btn-primary" onClick={() => setRunning(true)} disabled={running}>
+          Run Demo
+        </button>
+        <button className="btn-pause" onClick={() => setRunning(false)} disabled={!running}>
+          Pause
+        </button>
+        <button className="btn-secondary" onClick={handleReset}>
+          Reset
+        </button>
+      </div>
 
+      <div className="comparison-container">
+        <h2 className="section-title">Model Cost Comparison</h2>
+        <div className="comparison-cards">
+          <div className="comparison-card cheap">
+            <span className="comparison-card-title">GPT-4o-mini</span>
+            <span className="comparison-card-label">Optimized Model</span>
+            <span className="comparison-card-cost">${cheapCost.toFixed(6)}</span>
+            <span className="comparison-card-requests">{cheapCount} requests routed here</span>
+          </div>
+          <div className="comparison-card expensive">
+            <span className="comparison-card-title">GPT-4o</span>
+            <span className="comparison-card-label">Premium Model</span>
+            <span className="comparison-card-cost">${expensiveCost.toFixed(6)}</span>
+            <span className="comparison-card-requests">{expensiveCount} requests routed here</span>
+          </div>
+          <div className="comparison-card baseline">
+            <span className="comparison-card-title">No Optimization</span>
+            <span className="comparison-card-label">If All GPT-4o</span>
+            <span className="comparison-card-cost">${(totalCost + totalSavings).toFixed(6)}</span>
+            <span className="comparison-card-requests">estimated cost without FuseBox</span>
+          </div>
+          <div className="comparison-card savings-card">
+            <span className="comparison-card-title">You Saved</span>
+            <span className="comparison-card-label">Total Savings</span>
+            <span className="comparison-card-cost">${totalSavings.toFixed(6)}</span>
+            <span className="comparison-card-requests">by routing to cheaper models</span>
+          </div>
+        </div>
+      </div>
 
       <div className="log-container">
         <h2 className="section-title">Live Routing Decisions</h2>
-<div className="legend">
-  <div className="legend-item">
-    <span className="legend-bar simple"></span>
-    <span className="legend-label">Simple — GPT-4o-mini — Lowest Cost</span>
-  </div>
-  <div className="legend-item">
-    <span className="legend-bar medium"></span>
-    <span className="legend-label">Medium — GPT-4o-mini or GPT-4o</span>
-  </div>
-  <div className="legend-item">
-    <span className="legend-bar complex"></span>
-    <span className="legend-label">Complex — GPT-4o — Highest Cost</span>
-  </div>
-</div>
-
+        <div className="legend">
+          <div className="legend-item">
+            <span className="legend-bar simple"></span>
+            <span className="legend-label">Simple — GPT-4o-mini — Lowest Cost</span>
+          </div>
+          <div className="legend-item">
+            <span className="legend-bar medium"></span>
+            <span className="legend-label">Medium — GPT-4o-mini or GPT-4o</span>
+          </div>
+          <div className="legend-item">
+            <span className="legend-bar complex"></span>
+            <span className="legend-label">Complex — GPT-4o — Highest Cost</span>
+          </div>
+        </div>
         {log.length === 0 && (
           <p className="empty-state">Press Run Demo to begin routing simulation</p>
         )}

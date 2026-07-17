@@ -352,3 +352,75 @@ body {
   color: #555;
 }
 
+/* MODEL COMPARISON */
+.comparison-container {
+  background-color: white;
+  border-radius: 10px;
+  padding: 24px 32px;
+  margin: 0 40px 20px 40px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.comparison-cards {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.comparison-card {
+  flex: 1;
+  min-width: 160px;
+  border-radius: 10px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: center;
+}
+
+.comparison-card.cheap {
+  background-color: #e3f2fd;
+  border: 2px solid #4F93D9;
+}
+
+.comparison-card.expensive {
+  background-color: #fce4ec;
+  border: 2px solid #D30E8C;
+}
+
+.comparison-card.baseline {
+  background-color: #f5f5f5;
+  border: 2px solid #aaa;
+}
+
+.comparison-card.savings-card {
+  background-color: #f3e5f5;
+  border: 2px solid #582873;
+}
+
+.comparison-card-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #333;
+}
+
+.comparison-card-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #888;
+}
+
+.comparison-card-cost {
+  font-size: 22px;
+  font-weight: bold;
+  color: #582873;
+  margin-top: 8px;
+}
+
+.comparison-card-requests {
+  font-size: 12px;
+  color: #777;
+}
+
