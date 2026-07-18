@@ -13,7 +13,8 @@ const PROMPTS = [
   { text: "Azure AD Connect sync failing after domain controller migration.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
 ];
 
-const THRESHOLD = 0.0003;
+const BUDGET_LIMIT = 0.001;
+const ALERT_THRESHOLD = 0.0003;
 const PREMIUM_MODEL_COST = 0.007;
 
 function getTokenCount(text) {
@@ -29,11 +30,45 @@ function formatCost(value) {
   return '$' + value.toFixed(6);
 }
 
+function generateCSV(log, totalCost, totalSavings, cheapCount, midCount, premiumCount) {
+  const header = ['Timestamp','Model','Complexity','Risk','Tokens','Cost ($)','Savings ($)','Live','Prompt'];
+  const rows = log.map(e => [
+    e.timestamp,
+    e.model,
+    e.complexity,
+    e.risk,
+    e.tokens,
+    e.cost,
+    e.savings,
+    e.live ? 'Yes' : 'No',
+    '"' + e.prompt.replace(/"/g, '""') + '"'
+  ]);
+  const summary = [
+    [],
+    ['SUMMARY'],
+    ['Total Cost', formatCost(totalCost)],
+    ['Total Savings', formatCost(totalSavings)],
+    ['Routed to Phi-4-mini', cheapCount],
+    ['Routed to DeepSeek-V4-Flash', midCount],
+    ['Routed to Kimi-K2.6', premiumCount],
+    ['Total Processed', cheapCount + midCount + premiumCount],
+  ];
+  const csvContent = [header, ...rows, ...summary].map(r => r.join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'fusebox-report-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function App() {
   const [log, setLog] = useState([]);
   const [totalCost, setTotalCost] = useState(0);
   const [totalSavings, setTotalSavings] = useState(0);
   const [alertActive, setAlertActive] = useState(false);
+  const [budgetExceeded, setBudgetExceeded] = useState(false);
   const [running, setRunning] = useState(false);
   const [cheapCount, setCheapCount] = useState(0);
   const [midCount, setMidCount] = useState(0);
@@ -43,26 +78,35 @@ function App() {
   const [premiumCost, setPremiumCost] = useState(0);
   const [livePrompt, setLivePrompt] = useState('');
   const [liveLoading, setLiveLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState({ threshold: false, exceeded: false });
   const intervalRef = useRef(null);
+
+  // Email alert simulation — fires once per threshold crossing
+  useEffect(() => {
+    if (alertActive && !emailSent.threshold) {
+      console.log('[FuseBox Alert] Budget threshold reached — alert email would fire here via Azure Communication Services or SendGrid.');
+      setEmailSent(prev => ({ ...prev, threshold: true }));
+    }
+    if (budgetExceeded && !emailSent.exceeded) {
+      console.log('[FuseBox Alert] Budget EXCEEDED — critical alert email would fire here.');
+      setEmailSent(prev => ({ ...prev, exceeded: true }));
+    }
+  }, [alertActive, budgetExceeded, emailSent]);
 
   useEffect(() => {
     if (!running) return;
-
     let index = 0;
     let shuffled = [...PROMPTS].sort(() => Math.random() - 0.5);
-
     intervalRef.current = setInterval(() => {
       if (index >= shuffled.length) {
         index = 0;
         shuffled = [...PROMPTS].sort(() => Math.random() - 0.5);
       }
-
       const prompt = shuffled[index];
       const tokens = getTokenCount(prompt.text);
       const cost = getCost(tokens, prompt.costPer1k);
       const premiumCostVal = getCost(tokens, PREMIUM_MODEL_COST);
       const savings = premiumCostVal - cost;
-
       setLog(prev => {
         const newEntry = {
           id: Date.now(),
@@ -80,15 +124,13 @@ function App() {
         };
         return [newEntry, ...prev].slice(0, 20);
       });
-
       setTotalCost(prev => {
         const newTotal = prev + cost;
-        if (newTotal >= THRESHOLD) setAlertActive(true);
+        if (newTotal >= ALERT_THRESHOLD) setAlertActive(true);
+        if (newTotal >= BUDGET_LIMIT) setBudgetExceeded(true);
         return newTotal;
       });
-
       setTotalSavings(prev => prev + (savings > 0 ? savings : 0));
-
       if (prompt.model === 'phi-4-mini') {
         setCheapCount(prev => prev + 1);
         setCheapCost(prev => prev + cost);
@@ -99,10 +141,8 @@ function App() {
         setPremiumCount(prev => prev + 1);
         setPremiumCost(prev => prev + cost);
       }
-
       index++;
     }, 1500);
-
     return () => clearInterval(intervalRef.current);
   }, [running]);
 
@@ -112,6 +152,7 @@ function App() {
     setTotalCost(0);
     setTotalSavings(0);
     setAlertActive(false);
+    setBudgetExceeded(false);
     setRunning(false);
     setCheapCount(0);
     setMidCount(0);
@@ -120,14 +161,14 @@ function App() {
     setMidCost(0);
     setPremiumCost(0);
     setLivePrompt('');
+    setEmailSent({ threshold: false, exceeded: false });
   };
 
   const handleLiveSubmit = async () => {
     if (!livePrompt.trim()) return;
     setLiveLoading(true);
     try {
-      const res = await fetch('https://fusebox-api-jhoang.azurewebsites.net/api/route',
- {
+      const res = await fetch('https://fusebox-api-jhoang.azurewebsites.net/api/route', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: livePrompt }),
@@ -152,7 +193,8 @@ function App() {
       });
       setTotalCost(prev => {
         const newTotal = prev + parseFloat(data.cost);
-        if (newTotal >= THRESHOLD) setAlertActive(true);
+        if (newTotal >= ALERT_THRESHOLD) setAlertActive(true);
+        if (newTotal >= BUDGET_LIMIT) setBudgetExceeded(true);
         return newTotal;
       });
       setTotalSavings(prev => prev + (data.savings !== 'N/A' ? parseFloat(data.savings) : 0));
@@ -174,15 +216,16 @@ function App() {
   };
 
   const totalProcessed = cheapCount + midCount + premiumCount;
-  const optimizationRate = totalProcessed > 0 ? Math.round((cheapCount / totalProcessed) * 100) : 0;
+  const optimizationRate = totalProcessed > 0 ? Math.round(((cheapCount + midCount) / totalProcessed) * 100) : 0;
   const costReduction = (totalCost + totalSavings) > 0 ? ((totalSavings / (totalCost + totalSavings)) * 100).toFixed(1) : 0;
+  const budgetPct = Math.min((totalCost / BUDGET_LIMIT) * 100, 100).toFixed(0);
 
   return (
     <div className="app">
       <div className="fixed-panel">
         <header className="header">
           <div className="header-left">
-            <span className="eyebrow">INSIGHT MANAGED SERVICES</span>
+            <span className="eyebrow">Insight Managed Services</span>
             <h1 className="title">Project FuseBox</h1>
             <span className="subtitle">Enterprise AI FinOps Platform</span>
           </div>
@@ -195,29 +238,28 @@ function App() {
               <span className="metric-label">Total Savings</span>
               <span className="metric-value">{formatCost(totalSavings)}</span>
             </div>
-            <div className="metric-box">
+            <div className="metric-box smart">
               <span className="metric-label">Smart Routes</span>
-              <span className="metric-value">{cheapCount + midCount} of {totalProcessed} optimized</span>
+              <span className="metric-value">{cheapCount + midCount} of {totalProcessed}</span>
             </div>
           </div>
         </header>
 
-        {alertActive && (
+        {budgetExceeded && (
+          <div className="alert-banner exceeded">
+            BUDGET LIMIT EXCEEDED — ${BUDGET_LIMIT.toFixed(4)} cap reached — alert email fired — review spend immediately
+          </div>
+        )}
+        {alertActive && !budgetExceeded && (
           <div className="alert-banner">
-            ⚠️ Budget threshold reached — review AI spend immediately
+            BUDGET THRESHOLD REACHED — {budgetPct}% of limit used — alert email fired
           </div>
         )}
 
         <div className="controls">
-          <button className="btn-primary" onClick={() => setRunning(true)} disabled={running}>
-            Run Demo
-          </button>
-          <button className="btn-pause" onClick={() => setRunning(false)} disabled={!running}>
-            Pause
-          </button>
-          <button className="btn-secondary" onClick={handleReset}>
-            Reset
-          </button>
+          <button className="btn-primary" onClick={() => setRunning(true)} disabled={running}>Run Demo</button>
+          <button className="btn-pause" onClick={() => setRunning(false)} disabled={!running}>Pause</button>
+          <button className="btn-secondary" onClick={handleReset}>Reset</button>
         </div>
 
         <div className="live-input-container">
@@ -272,27 +314,31 @@ function App() {
         <div className="summary-bar">
           <div className="summary-item">
             <span className="summary-value">{totalProcessed}</span>
-            <span className="summary-label">Total Processed</span>
+            <span className="summary-label">Processed</span>
           </div>
           <div className="summary-item">
             <span className="summary-value">{cheapCount}</span>
-            <span className="summary-label">Routed to Phi</span>
+            <span className="summary-label">Phi Routes</span>
           </div>
           <div className="summary-item">
             <span className="summary-value">{midCount}</span>
-            <span className="summary-label">Routed to DeepSeek</span>
+            <span className="summary-label">DeepSeek Routes</span>
           </div>
           <div className="summary-item">
             <span className="summary-value">{premiumCount}</span>
-            <span className="summary-label">Routed to Kimi</span>
+            <span className="summary-label">Kimi Routes</span>
           </div>
           <div className="summary-item highlight">
             <span className="summary-value">{optimizationRate}%</span>
-            <span className="summary-label">Optimization Rate</span>
+            <span className="summary-label">Optimized</span>
           </div>
           <div className="summary-item highlight">
             <span className="summary-value">{costReduction}%</span>
             <span className="summary-label">Cost Reduction</span>
+          </div>
+          <div className="summary-item highlight">
+            <span className="summary-value">{budgetPct}%</span>
+            <span className="summary-label">Budget Used</span>
           </div>
         </div>
 
@@ -313,6 +359,13 @@ function App() {
 
         <div className="log-header-bar">
           <h2 className="section-title">Live Routing Decisions</h2>
+          <button
+            className="btn-report"
+            onClick={() => generateCSV(log, totalCost, totalSavings, cheapCount, midCount, premiumCount)}
+            disabled={log.length === 0}
+          >
+            Export Report
+          </button>
         </div>
       </div>
 
@@ -329,22 +382,16 @@ function App() {
                 <span className={`badge ${entry.model === 'phi-4-mini' ? 'badge-cheap' : entry.model === 'DeepSeek-V4-Flash' ? 'badge-mid' : 'badge-expensive'}`}>
                   {entry.model}
                 </span>
-                <span className={`badge complexity-${entry.complexity}`}>
-                  {entry.complexity}
-                </span>
-                <span className={`badge risk-${entry.risk}`}>
-                  {entry.risk} risk
-                </span>
+                <span className={`badge complexity-${entry.complexity}`}>{entry.complexity}</span>
+                <span className={`badge risk-${entry.risk}`}>{entry.risk} risk</span>
               </div>
               <p className="log-prompt">
-                <span className="prompt-label">USER PROMPT: </span>{entry.prompt}
+                <span className="prompt-label">Prompt: </span>{entry.prompt}
               </p>
               {entry.aiResponse && (
                 <div className="ai-response">
-                  <span className="ai-response-label">AI Triage Response:</span>
-                  {entry.reason && (
-                    <p className="ai-reason">Routing reason: {entry.reason}</p>
-                  )}
+                  <span className="ai-response-label">AI Triage Response</span>
+                  {entry.reason && <p className="ai-reason">Routing reason: {entry.reason}</p>}
                   <p className="ai-response-text">{entry.aiResponse.replace(/[#*`_~]/g, '').trim()}</p>
                 </div>
               )}
