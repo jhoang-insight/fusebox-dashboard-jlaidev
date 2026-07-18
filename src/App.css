@@ -700,4 +700,126 @@ body {
   animation: pulse 1s infinite;
 }
 
+/* GATE SCREEN */
+.gate-screen {
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(135deg, #0e0e14 0%, #1a0a2e 50%, #0e0e14 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gate-card {
+  background: #14101e;
+  border: 1px solid #2d0f5e;
+  border-radius: 16px;
+  padding: 48px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 380px;
+  box-shadow: 0 0 48px rgba(211,14,140,0.15);
+}
+
+.gate-coin {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffd700, #ff8c00, #D30E8C);
+  border: 2px solid #ffd700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 24px rgba(255,140,0,0.5), 0 0 48px rgba(211,14,140,0.3);
+  animation: coinGlow 1.5s ease-in-out infinite alternate;
+  margin-bottom: 8px;
+}
+
+.gate-coin-label {
+  font-size: 22px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 0 8px rgba(0,0,0,0.8);
+}
+
+.gate-title {
+  font-size: 28px;
+  font-weight: bold;
+  color: white;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.gate-subtitle {
+  font-size: 12px;
+  color: #a78bca;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin: 0;
+}
+
+.gate-team {
+  font-size: 11px;
+  color: #444;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0 0 8px 0;
+}
+
+.gate-input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #3a1f5c;
+  background: #0e0e14;
+  color: white;
+  font-size: 14px;
+  font-family: Arial, sans-serif;
+  outline: none;
+  text-align: center;
+  letter-spacing: 2px;
+  transition: border-color 0.2s;
+}
+
+.gate-input:focus {
+  border-color: #D30E8C;
+  box-shadow: 0 0 0 2px rgba(211,14,140,0.15);
+}
+
+.gate-input::placeholder {
+  color: #3a1f5c;
+  letter-spacing: 1px;
+}
+
+.gate-error {
+  font-size: 11px;
+  color: #D30E8C;
+  margin: 0;
+  text-align: center;
+}
+
+.gate-button {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #D30E8C, #b00a78);
+  color: white;
+  font-size: 13px;
+  font-weight: bold;
+  font-family: Arial, sans-serif;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(211,14,140,0.4);
+  transition: all 0.2s;
+  margin-top: 8px;
+}
+
+.gate-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(211,14,140,0.6);
+}
 

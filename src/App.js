@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
+const DEMO_PASSWORD = 'TokenBurners2026';
+
 const PROMPTS = [
   { text: "User cannot log into their laptop. Password reset needed.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
   { text: "Printer on floor 3 is offline. No one can print.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
@@ -80,6 +82,9 @@ function generateCSV(log, totalCost, totalSavings, cheapCount, midCount, premium
 }
 
 function App() {
+  const [unlocked, setUnlocked] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState(false);
   const [log, setLog] = useState([]);
   const [totalCost, setTotalCost] = useState(0);
   const [totalSavings, setTotalSavings] = useState(0);
@@ -183,6 +188,16 @@ function App() {
     setEmailSent({ threshold: false, exceeded: false });
   };
 
+  const handleUnlock = () => {
+    if (passwordInput === DEMO_PASSWORD) {
+      setUnlocked(true);
+      setPasswordError(false);
+    } else {
+      setPasswordError(true);
+      setPasswordInput('');
+    }
+  };
+
   const handleLiveSubmit = async () => {
     if (!livePrompt.trim()) return;
     setLiveLoading(true);
@@ -239,6 +254,34 @@ function App() {
   const optimizationRate = totalProcessed > 0 ? Math.round(((cheapCount + midCount) / totalProcessed) * 100) : 0;
   const costReduction = (totalCost + totalSavings) > 0 ? ((totalSavings / (totalCost + totalSavings)) * 100).toFixed(1) : 0;
   const budgetPct = Math.min((totalCost / BUDGET_LIMIT) * 100, 100).toFixed(0);
+
+  if (!unlocked) {
+    return (
+      <div className="gate-screen">
+        <div className="gate-card">
+          <div className="gate-coin">
+            <span className="gate-coin-label">FB</span>
+          </div>
+          <h1 className="gate-title">Project FuseBox</h1>
+          <p className="gate-subtitle">Enterprise AI FinOps Platform</p>
+          <p className="gate-team">Team Token Burners — Insight Hackathon 2026</p>
+          <input
+            className="gate-input"
+            type="password"
+            placeholder="Enter access code..."
+            value={passwordInput}
+            onChange={e => setPasswordInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleUnlock()}
+            autoFocus
+          />
+          {passwordError && <p className="gate-error">Incorrect access code. Try again.</p>}
+          <button className="gate-button" onClick={handleUnlock}>
+            Access Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
