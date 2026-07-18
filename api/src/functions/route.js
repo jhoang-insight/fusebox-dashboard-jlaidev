@@ -27,7 +27,7 @@ const CORS_HEADERS = {
   "Content-Type": "application/json"
 };
 
-async function sendAlertEmail(subject, body) {
+async function sendAlertEmail(subject, bodyText) {
   try {
     const client = new EmailClient(ACS_CONNECTION_STRING);
     const message = {
@@ -35,20 +35,19 @@ async function sendAlertEmail(subject, body) {
       recipients: { to: [{ address: ACS_RECIPIENT }] },
       content: {
         subject,
-        plainText: body,
+        plainText: bodyText,
         html: `<html><body style="font-family:Arial,sans-serif;background:#0e0e14;color:white;padding:24px;">
           <div style="max-width:600px;margin:0 auto;background:#1a0a2e;border:1px solid #D30E8C;border-radius:12px;padding:24px;">
-            <h2 style="color:#D30E8C;margin-top:0;">Project FuseBox — AI Spend Alert</h2>
-            <p style="color:#ccc;">${body.replace(/\n/g, "<br/>")}</p>
+            <h2 style="color:#D30E8C;margin-top:0;">⚡ Project FuseBox — AI Spend Alert</h2>
+            <p style="color:#ccc;">${bodyText.replace(/\n/g, "<br/>")}</p>
             <hr style="border-color:#582873;"/>
             <p style="color:#666;font-size:12px;">Team Token Burners — Insight Hackathon 2026</p>
           </div>
         </body></html>`
       }
     };
-        const poller = await client.beginSend(message);
+    const poller = await client.beginSend(message);
     poller.pollUntilDone().catch(e => console.error("Email poll failed:", e.message));
-
   } catch (e) {
     console.error("Email alert failed:", e.message);
   }
@@ -164,6 +163,44 @@ async function callTriageModel(model, prompt, context) {
   return response;
 }
 
+// Alert endpoint — called by frontend when budget threshold or limit is crossed
+app.http("alert", {
+  methods: ["POST", "OPTIONS"],
+  authLevel: "anonymous",
+  handler: async (request, context) => {
+    if (request.method === "OPTIONS") {
+      return { status: 204, headers: CORS_HEADERS };
+    }
+
+    let body;
+    try {
+      body = await request.json();
+    } catch (e) {
+      return { status: 400, headers: CORS_HEADERS, jsonBody: { error: "Invalid JSON body" } };
+    }
+
+    const { type, totalSpend, triggerPrompt, model, cost } = body;
+
+    const isExceeded = type === "exceeded";
+    const subject = isExceeded
+      ? "URGENT: FuseBox Budget Limit Exceeded"
+      : "WARNING: FuseBox Budget Threshold Reached";
+
+    const bodyText = isExceeded
+      ? `Project FuseBox AI spend has exceeded the budget limit of $0.0010.\n\nCurrent spend: $${parseFloat(totalSpend).toFixed(6)}\nTriggered by: ${triggerPrompt}\nModel used: ${model}\nCost of this request: $${parseFloat(cost).toFixed(6)}\n\nReview AI spend immediately in the FuseBox dashboard.`
+      : `Project FuseBox AI spend has reached the alert threshold of $0.0003.\n\nCurrent spend: $${parseFloat(totalSpend).toFixed(6)}\nTriggered by: ${triggerPrompt}\nModel used: ${model}\nCost of this request: $${parseFloat(cost).toFixed(6)}\n\nMonitor spend closely.`;
+
+    await sendAlertEmail(subject, bodyText);
+
+    return {
+      status: 200,
+      headers: CORS_HEADERS,
+      jsonBody: { sent: true, type }
+    };
+  }
+});
+
+// Main routing endpoint
 app.http("route", {
   methods: ["POST", "OPTIONS"],
   authLevel: "anonymous",
@@ -239,14 +276,6 @@ app.http("route", {
     const savings = model !== PREMIUM_MODEL ? premiumCost - cost : 0;
 
     const triageText = response?.choices?.[0]?.message?.content || response?.choices?.[0]?.message?.reasoning_content || "Triage response unavailable";
-
-    // Step 4 — Email alert on high risk complex tickets
-    if (model === PREMIUM_MODEL && risk === "high") {
-      await sendAlertEmail(
-        "ALERT: FuseBox Routed High-Risk Ticket to Premium Model",
-        `A high-risk complex ticket has been routed to Kimi-K2.6.\n\nTicket: ${prompt}\nModel: ${model}\nComplexity: ${complexity}\nRisk: ${risk}\nCost: $${cost.toFixed(6)}\nKnowledge Base: ${knownIssueContext.matched ? knownIssueContext.issues.map(i => i.title).join(", ") : "No match"}\n\nReview AI spend in the FuseBox dashboard.`
-      );
-    }
 
     return {
       status: 200,

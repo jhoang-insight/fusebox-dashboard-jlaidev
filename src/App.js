@@ -106,16 +106,37 @@ function App() {
     document.title = '⚡ Project FuseBox';
   }, []);
 
-  useEffect(() => {
+    useEffect(() => {
     if (alertActive && !emailSent.threshold) {
-      console.log('[FuseBox Alert] Budget threshold reached.');
       setEmailSent(prev => ({ ...prev, threshold: true }));
+      fetch('https://fusebox-api-burners.azurewebsites.net/api/alert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'threshold',
+          totalSpend: totalCost.toFixed(6),
+          triggerPrompt: log[0]?.prompt || 'unknown',
+          model: log[0]?.model || 'unknown',
+          cost: log[0]?.cost || '0'
+        })
+      }).catch(e => console.error('Alert email failed:', e));
     }
     if (budgetExceeded && !emailSent.exceeded) {
-      console.log('[FuseBox Alert] Budget EXCEEDED.');
       setEmailSent(prev => ({ ...prev, exceeded: true }));
+      fetch('https://fusebox-api-burners.azurewebsites.net/api/alert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'exceeded',
+          totalSpend: totalCost.toFixed(6),
+          triggerPrompt: log[0]?.prompt || 'unknown',
+          model: log[0]?.model || 'unknown',
+          cost: log[0]?.cost || '0'
+        })
+      }).catch(e => console.error('Alert email failed:', e));
     }
-  }, [alertActive, budgetExceeded, emailSent]);
+  }, [alertActive, budgetExceeded, emailSent, totalCost, log]);
+
 
   useEffect(() => {
     if (!running) return;
