@@ -2,19 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
 const PROMPTS = [
-  { text: "User cannot log into their laptop. Password reset needed.", complexity: "simple", model: "GPT-4o-mini", costPer1k: 0.00015, risk: "low" },
-  { text: "Printer on floor 3 is offline. No one can print.", complexity: "simple", model: "GPT-4o-mini", costPer1k: 0.00015, risk: "low" },
-  { text: "User requesting access to the shared marketing drive.", complexity: "simple", model: "GPT-4o-mini", costPer1k: 0.00015, risk: "low" },
-  { text: "Outlook not syncing emails since this morning. VPN is connected.", complexity: "medium", model: "GPT-4o-mini", costPer1k: 0.00015, risk: "low" },
-  { text: "Teams calls dropping every 20 minutes after Windows update.", complexity: "medium", model: "GPT-4o-mini", costPer1k: 0.00015, risk: "medium" },
-  { text: "SharePoint permissions broken after admin changes. Three users affected.", complexity: "medium", model: "GPT-4o", costPer1k: 0.005, risk: "medium" },
-  { text: "47 users cannot access Azure Virtual Desktop across three sites.", complexity: "complex", model: "GPT-4o", costPer1k: 0.005, risk: "high" },
-  { text: "Conditional Access policy blocking all MFA accounts from M365. Tenant-wide.", complexity: "complex", model: "GPT-4o", costPer1k: 0.005, risk: "high" },
-  { text: "Azure AD Connect sync failing after domain controller migration.", complexity: "complex", model: "GPT-4o", costPer1k: 0.005, risk: "high" },
+  { text: "User cannot log into their laptop. Password reset needed.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "Printer on floor 3 is offline. No one can print.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "User requesting access to the shared marketing drive.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "Outlook not syncing emails since this morning. VPN is connected.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
+  { text: "Teams calls dropping every 20 minutes after Windows update.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
+  { text: "SharePoint permissions broken after admin changes. Three users affected.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
+  { text: "47 users cannot access Azure Virtual Desktop across three sites.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
+  { text: "Conditional Access policy blocking all MFA accounts from M365. Tenant-wide.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
+  { text: "Azure AD Connect sync failing after domain controller migration.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
 ];
 
 const THRESHOLD = 0.0003;
-const EXPENSIVE_MODEL_COST = 0.005;
+const PREMIUM_MODEL_COST = 0.007;
 
 function getTokenCount(text) {
   return Math.floor(text.length / 4);
@@ -24,6 +24,11 @@ function getCost(tokens, costPer1k) {
   return (tokens / 1000) * costPer1k;
 }
 
+function formatCost(value) {
+  if (value === 0) return '$0.000000';
+  return '$' + value.toFixed(6);
+}
+
 function App() {
   const [log, setLog] = useState([]);
   const [totalCost, setTotalCost] = useState(0);
@@ -31,9 +36,13 @@ function App() {
   const [alertActive, setAlertActive] = useState(false);
   const [running, setRunning] = useState(false);
   const [cheapCount, setCheapCount] = useState(0);
-  const [expensiveCount, setExpensiveCount] = useState(0);
+  const [midCount, setMidCount] = useState(0);
+  const [premiumCount, setPremiumCount] = useState(0);
   const [cheapCost, setCheapCost] = useState(0);
-  const [expensiveCost, setExpensiveCost] = useState(0);
+  const [midCost, setMidCost] = useState(0);
+  const [premiumCost, setPremiumCost] = useState(0);
+  const [livePrompt, setLivePrompt] = useState('');
+  const [liveLoading, setLiveLoading] = useState(false);
   const intervalRef = useRef(null);
 
   useEffect(() => {
@@ -51,8 +60,8 @@ function App() {
       const prompt = shuffled[index];
       const tokens = getTokenCount(prompt.text);
       const cost = getCost(tokens, prompt.costPer1k);
-      const expensiveCostVal = getCost(tokens, EXPENSIVE_MODEL_COST);
-      const savings = expensiveCostVal - cost;
+      const premiumCostVal = getCost(tokens, PREMIUM_MODEL_COST);
+      const savings = premiumCostVal - cost;
 
       setLog(prev => {
         const newEntry = {
@@ -65,9 +74,11 @@ function App() {
           tokens,
           cost: cost.toFixed(6),
           savings: savings > 0 ? savings.toFixed(6) : 'N/A',
+          live: false,
+          aiResponse: null,
+          reason: null,
         };
-        const updated = [newEntry, ...prev];
-        return updated.slice(0, 20);
+        return [newEntry, ...prev].slice(0, 20);
       });
 
       setTotalCost(prev => {
@@ -78,12 +89,15 @@ function App() {
 
       setTotalSavings(prev => prev + (savings > 0 ? savings : 0));
 
-      if (prompt.model === 'GPT-4o-mini') {
+      if (prompt.model === 'phi-4-mini') {
         setCheapCount(prev => prev + 1);
         setCheapCost(prev => prev + cost);
+      } else if (prompt.model === 'DeepSeek-V4-Flash') {
+        setMidCount(prev => prev + 1);
+        setMidCost(prev => prev + cost);
       } else {
-        setExpensiveCount(prev => prev + 1);
-        setExpensiveCost(prev => prev + cost);
+        setPremiumCount(prev => prev + 1);
+        setPremiumCost(prev => prev + cost);
       }
 
       index++;
@@ -100,16 +114,72 @@ function App() {
     setAlertActive(false);
     setRunning(false);
     setCheapCount(0);
-    setExpensiveCount(0);
+    setMidCount(0);
+    setPremiumCount(0);
     setCheapCost(0);
-    setExpensiveCost(0);
+    setMidCost(0);
+    setPremiumCost(0);
+    setLivePrompt('');
   };
+
+  const handleLiveSubmit = async () => {
+    if (!livePrompt.trim()) return;
+    setLiveLoading(true);
+    try {
+      const res = await fetch('https://fusebox-api-jhoang.azurewebsites.net/api/route',
+ {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: livePrompt }),
+      });
+      const data = await res.json();
+      setLog(prev => {
+        const newEntry = {
+          id: Date.now(),
+          timestamp: data.timestamp,
+          prompt: data.prompt,
+          complexity: data.complexity,
+          model: data.model,
+          risk: data.risk,
+          tokens: data.tokens,
+          cost: data.cost,
+          savings: data.savings,
+          live: true,
+          aiResponse: data.response,
+          reason: data.reason,
+        };
+        return [newEntry, ...prev].slice(0, 20);
+      });
+      setTotalCost(prev => {
+        const newTotal = prev + parseFloat(data.cost);
+        if (newTotal >= THRESHOLD) setAlertActive(true);
+        return newTotal;
+      });
+      setTotalSavings(prev => prev + (data.savings !== 'N/A' ? parseFloat(data.savings) : 0));
+      if (data.model === 'phi-4-mini') {
+        setCheapCount(prev => prev + 1);
+        setCheapCost(prev => prev + parseFloat(data.cost));
+      } else if (data.model === 'DeepSeek-V4-Flash') {
+        setMidCount(prev => prev + 1);
+        setMidCost(prev => prev + parseFloat(data.cost));
+      } else {
+        setPremiumCount(prev => prev + 1);
+        setPremiumCost(prev => prev + parseFloat(data.cost));
+      }
+      setLivePrompt('');
+    } catch (e) {
+      console.error('Live route failed:', e);
+    }
+    setLiveLoading(false);
+  };
+
+  const totalProcessed = cheapCount + midCount + premiumCount;
+  const optimizationRate = totalProcessed > 0 ? Math.round((cheapCount / totalProcessed) * 100) : 0;
+  const costReduction = (totalCost + totalSavings) > 0 ? ((totalSavings / (totalCost + totalSavings)) * 100).toFixed(1) : 0;
 
   return (
     <div className="app">
-
       <div className="fixed-panel">
-
         <header className="header">
           <div className="header-left">
             <span className="eyebrow">INSIGHT MANAGED SERVICES</span>
@@ -119,22 +189,22 @@ function App() {
           <div className="header-right">
             <div className="metric-box">
               <span className="metric-label">Total Spend</span>
-              <span className="metric-value">${totalCost.toFixed(4)}</span>
+              <span className="metric-value">{formatCost(totalCost)}</span>
             </div>
             <div className="metric-box savings">
               <span className="metric-label">Total Savings</span>
-              <span className="metric-value">${totalSavings.toFixed(4)}</span>
+              <span className="metric-value">{formatCost(totalSavings)}</span>
             </div>
             <div className="metric-box">
               <span className="metric-label">Smart Routes</span>
-              <span className="metric-value">{cheapCount} of {cheapCount + expensiveCount} optimized</span>
+              <span className="metric-value">{cheapCount + midCount} of {totalProcessed} optimized</span>
             </div>
           </div>
         </header>
 
         {alertActive && (
           <div className="alert-banner">
-            ⚠️ Budget threshold of ${THRESHOLD} reached — review AI spend immediately
+            ⚠️ Budget threshold reached — review AI spend immediately
           </div>
         )}
 
@@ -150,30 +220,50 @@ function App() {
           </button>
         </div>
 
+        <div className="live-input-container">
+          <input
+            className="live-input"
+            type="text"
+            placeholder="Enter a ticket to route live..."
+            value={livePrompt}
+            onChange={e => setLivePrompt(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleLiveSubmit()}
+          />
+          <button className="btn-submit" onClick={handleLiveSubmit} disabled={liveLoading}>
+            {liveLoading ? 'Routing...' : 'Submit Live'}
+          </button>
+        </div>
+
         <div className="comparison-container">
           <div className="comparison-cards">
             <div className="comparison-card cheap">
-              <span className="comparison-card-title">GPT-4o-mini</span>
-              <span className="comparison-card-label">Optimized Model</span>
-              <span className="comparison-card-cost">${cheapCost.toFixed(6)}</span>
+              <span className="comparison-card-title">Phi-4-mini</span>
+              <span className="comparison-card-label">Simple — Lowest Cost</span>
+              <span className="comparison-card-cost">{formatCost(cheapCost)}</span>
               <span className="comparison-card-requests">{cheapCount} requests</span>
             </div>
+            <div className="comparison-card mid">
+              <span className="comparison-card-title">DeepSeek-V4-Flash</span>
+              <span className="comparison-card-label">Medium — Mid Cost</span>
+              <span className="comparison-card-cost">{formatCost(midCost)}</span>
+              <span className="comparison-card-requests">{midCount} requests</span>
+            </div>
             <div className="comparison-card expensive">
-              <span className="comparison-card-title">GPT-4o</span>
-              <span className="comparison-card-label">Premium Model</span>
-              <span className="comparison-card-cost">${expensiveCost.toFixed(6)}</span>
-              <span className="comparison-card-requests">{expensiveCount} requests</span>
+              <span className="comparison-card-title">Kimi-K2.6</span>
+              <span className="comparison-card-label">Complex — Highest Cost</span>
+              <span className="comparison-card-cost">{formatCost(premiumCost)}</span>
+              <span className="comparison-card-requests">{premiumCount} requests</span>
             </div>
             <div className="comparison-card baseline">
               <span className="comparison-card-title">No Optimization</span>
-              <span className="comparison-card-label">If All GPT-4o</span>
-              <span className="comparison-card-cost">${(totalCost + totalSavings).toFixed(6)}</span>
+              <span className="comparison-card-label">If All Kimi-K2.6</span>
+              <span className="comparison-card-cost">{formatCost(totalCost + totalSavings)}</span>
               <span className="comparison-card-requests">estimated</span>
             </div>
             <div className="comparison-card savings-card">
               <span className="comparison-card-title">You Saved</span>
               <span className="comparison-card-label">Total Savings</span>
-              <span className="comparison-card-cost">${totalSavings.toFixed(6)}</span>
+              <span className="comparison-card-cost">{formatCost(totalSavings)}</span>
               <span className="comparison-card-requests">by smart routing</span>
             </div>
           </div>
@@ -181,27 +271,27 @@ function App() {
 
         <div className="summary-bar">
           <div className="summary-item">
-            <span className="summary-value">{cheapCount + expensiveCount}</span>
+            <span className="summary-value">{totalProcessed}</span>
             <span className="summary-label">Total Processed</span>
           </div>
           <div className="summary-item">
             <span className="summary-value">{cheapCount}</span>
-            <span className="summary-label">Routed to Mini</span>
+            <span className="summary-label">Routed to Phi</span>
           </div>
           <div className="summary-item">
-            <span className="summary-value">{expensiveCount}</span>
-            <span className="summary-label">Routed to GPT-4o</span>
+            <span className="summary-value">{midCount}</span>
+            <span className="summary-label">Routed to DeepSeek</span>
+          </div>
+          <div className="summary-item">
+            <span className="summary-value">{premiumCount}</span>
+            <span className="summary-label">Routed to Kimi</span>
           </div>
           <div className="summary-item highlight">
-            <span className="summary-value">
-              {cheapCount + expensiveCount > 0 ? Math.round((cheapCount / (cheapCount + expensiveCount)) * 100) : 0}%
-            </span>
+            <span className="summary-value">{optimizationRate}%</span>
             <span className="summary-label">Optimization Rate</span>
           </div>
           <div className="summary-item highlight">
-            <span className="summary-value">
-              {((totalCost + totalSavings) > 0 ? (totalSavings / (totalCost + totalSavings)) * 100 : 0).toFixed(1)}%
-            </span>
+            <span className="summary-value">{costReduction}%</span>
             <span className="summary-label">Cost Reduction</span>
           </div>
         </div>
@@ -209,34 +299,34 @@ function App() {
         <div className="legend">
           <div className="legend-item">
             <span className="legend-bar simple"></span>
-            <span className="legend-label">Simple — GPT-4o-mini — Lowest Cost</span>
+            <span className="legend-label">Simple — Phi-4-mini — Lowest Cost</span>
           </div>
           <div className="legend-item">
             <span className="legend-bar medium"></span>
-            <span className="legend-label">Medium — GPT-4o-mini or GPT-4o</span>
+            <span className="legend-label">Medium — DeepSeek-V4-Flash — Mid Cost</span>
           </div>
           <div className="legend-item">
             <span className="legend-bar complex"></span>
-            <span className="legend-label">Complex — GPT-4o — Highest Cost</span>
+            <span className="legend-label">Complex — Kimi-K2.6 — Highest Cost</span>
           </div>
         </div>
 
         <div className="log-header-bar">
           <h2 className="section-title">Live Routing Decisions</h2>
         </div>
-
       </div>
 
       <div className="scroll-panel">
         {log.length === 0 && (
-          <p className="empty-state">Press Run Demo to begin routing simulation</p>
+          <p className="empty-state">Press Run Demo or submit a live ticket to begin</p>
         )}
         <div className="log-list">
           {log.map(entry => (
             <div key={entry.id} className={`log-entry ${entry.complexity}`}>
               <div className="log-header">
                 <span className="log-time">{entry.timestamp}</span>
-                <span className={`badge ${entry.model === 'GPT-4o-mini' ? 'badge-cheap' : 'badge-expensive'}`}>
+                {entry.live && <span className="badge live-badge">LIVE</span>}
+                <span className={`badge ${entry.model === 'phi-4-mini' ? 'badge-cheap' : entry.model === 'DeepSeek-V4-Flash' ? 'badge-mid' : 'badge-expensive'}`}>
                   {entry.model}
                 </span>
                 <span className={`badge complexity-${entry.complexity}`}>
@@ -246,7 +336,18 @@ function App() {
                   {entry.risk} risk
                 </span>
               </div>
-              <p className="log-prompt">{entry.prompt}</p>
+              <p className="log-prompt">
+                <span className="prompt-label">USER PROMPT: </span>{entry.prompt}
+              </p>
+              {entry.aiResponse && (
+                <div className="ai-response">
+                  <span className="ai-response-label">AI Triage Response:</span>
+                  {entry.reason && (
+                    <p className="ai-reason">Routing reason: {entry.reason}</p>
+                  )}
+                  <p className="ai-response-text">{entry.aiResponse.replace(/[#*`_~]/g, '').trim()}</p>
+                </div>
+              )}
               <div className="log-footer">
                 <span>Tokens: {entry.tokens}</span>
                 <span>Cost: ${entry.cost}</span>
@@ -264,7 +365,6 @@ function App() {
         <span className="footer-divider">|</span>
         <span className="footer-hackathon">Insight Hackathon 2026</span>
       </footer>
-
     </div>
   );
 }
