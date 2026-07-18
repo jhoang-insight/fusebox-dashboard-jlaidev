@@ -27,13 +27,10 @@ async function checkKnownIssues(prompt) {
   try {
     const url = `https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/${STORAGE_CONTAINER_NAME}/knownIssues.json?${BLOB_SAS_TOKEN}`;
     const res = await fetch(url);
-
     if (!res.ok) throw new Error(`Blob fetch failed: ${res.status}`);
-
     const data = await res.json();
     const lowerPrompt = prompt.toLowerCase();
     const matches = [];
-
     for (const issue of data.knownIssues) {
       for (const pattern of issue.pattern) {
         if (lowerPrompt.includes(pattern.toLowerCase())) {
@@ -47,11 +44,9 @@ async function checkKnownIssues(prompt) {
         }
       }
     }
-
     return matches.length > 0
       ? { matched: true, issues: matches }
       : { matched: false, issues: [] };
-
   } catch (e) {
     return { matched: false, issues: [], error: e.message };
   }
@@ -69,10 +64,7 @@ async function callFuseBoxAgent(prompt, knownIssueContext, context) {
       "api-key": API_KEY,
       "Foundry-Features": "HostedAgents=V1Preview"
     },
-    body: JSON.stringify({
-      input: enrichedInput,
-      stream: false
-    })
+    body: JSON.stringify({ input: enrichedInput, stream: false })
   });
 
   if (!res.ok) {
@@ -103,6 +95,22 @@ async function callFuseBoxAgent(prompt, knownIssueContext, context) {
   };
 }
 
+async function callTriageModel(model, prompt, context) {
+  const client = new OpenAI({ baseURL: ENDPOINT, apiKey: API_KEY });
+  const response = await client.chat.completions.create({
+    model,
+    messages: [
+      {
+        role: "system",
+        content: "You are a helpful IT service desk assistant. Provide a brief, clear triage summary and recommended next steps."
+      },
+      { role: "user", content: prompt }
+    ],
+    max_tokens: 300,
+  });
+  return response;
+}
+
 app.http("route", {
   methods: ["POST", "OPTIONS"],
   authLevel: "anonymous",
@@ -126,53 +134,52 @@ app.http("route", {
       return { status: 400, headers: CORS_HEADERS, jsonBody: { error: "prompt is required" } };
     }
 
-    // Step 1 — Query knowledge base for known issue patterns
+    // Step 1 — KB check
     const knownIssueContext = await checkKnownIssues(prompt);
     context.log("Known issue check result:", knownIssueContext);
 
-    // Step 2 — FuseBox Foundry Agent classifies with knowledge base context
+    // Step 2 — Agent classification with 8 second timeout
     let classification;
     try {
-      classification = await callFuseBoxAgent(prompt, knownIssueContext, context);
+      const agentPromise = callFuseBoxAgent(prompt, knownIssueContext, context);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Agent timeout")), 8000)
+      );
+      classification = await Promise.race([agentPromise, timeoutPromise]);
       context.log("FuseBox agent classification:", classification);
     } catch (e) {
-      context.log("FuseBox agent scoring failed, falling back to medium:", e.message);
-      classification = { complexity: "medium", risk: "medium", model: MID_MODEL, reason: "Fallback - FuseBox agent unavailable" };
+      context.log("FuseBox agent scoring failed, falling back:", e.message);
+      if (knownIssueContext.matched) {
+        const highSeverity = knownIssueContext.issues.some(i => i.severity === "high");
+        const medSeverity = knownIssueContext.issues.some(i => i.severity === "medium");
+        if (highSeverity) {
+          classification = { complexity: "complex", risk: "high", model: PREMIUM_MODEL, reason: `KB match: ${knownIssueContext.issues.map(i => i.title).join(", ")}` };
+        } else if (medSeverity) {
+          classification = { complexity: "medium", risk: "medium", model: MID_MODEL, reason: `KB match: ${knownIssueContext.issues.map(i => i.title).join(", ")}` };
+        } else {
+          classification = { complexity: "medium", risk: "medium", model: MID_MODEL, reason: "Fallback - agent timeout" };
+        }
+      } else {
+        classification = { complexity: "medium", risk: "medium", model: MID_MODEL, reason: "Fallback - agent timeout" };
+      }
     }
 
     const { complexity, risk, model, reason } = classification;
 
-    // Step 3 — Determine cost rate
     let costPer1k;
     if (model === CHEAP_MODEL) costPer1k = CHEAP_COST_PER_1K;
     else if (model === MID_MODEL) costPer1k = MID_COST_PER_1K;
     else costPer1k = PREMIUM_COST_PER_1K;
 
-    // Step 4 — Route to selected model for triage response
-    const client = new OpenAI({ baseURL: ENDPOINT, apiKey: API_KEY });
-
+    // Step 3 — Triage response
     let response;
     try {
-      response = await client.chat.completions.create({
-        model,
-        messages: [
-          {
-            role: "system",
-            content: "You are a helpful IT service desk assistant. Provide a brief, clear triage summary and recommended next steps."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        max_tokens: 300,
-      });
+      response = await callTriageModel(model, prompt, context);
     } catch (e) {
       context.log("Model triage call failed:", e.message);
       return { status: 500, headers: CORS_HEADERS, jsonBody: { error: "Model triage call failed", details: e.message } };
     }
 
-    // Step 5 — Calculate cost and savings
     const totalTokens = response.usage.total_tokens;
     const cost = (totalTokens / 1000) * costPer1k;
     const premiumCost = (totalTokens / 1000) * PREMIUM_COST_PER_1K;

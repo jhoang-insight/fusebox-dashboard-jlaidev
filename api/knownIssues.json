@@ -2,28 +2,28 @@
   "knownIssues": [
     {
       "id": "KI-001",
-      "pattern": ["azure ad connect", "ad connect", "directory sync"],
+      "pattern": ["azure ad connect", "ad connect", "directory sync", "aad connect"],
       "title": "Azure AD Connect Sync Failure",
       "severity": "high",
       "recommendation": "Route to Kimi-K2.6 — hybrid identity issues require advanced reasoning"
     },
     {
       "id": "KI-002",
-      "pattern": ["conditional access", "mfa blocked", "mfa policy"],
+      "pattern": ["conditional access", "mfa blocked", "mfa policy", "mfa accounts"],
       "title": "Conditional Access Policy Blocking Users",
       "severity": "high",
       "recommendation": "Route to Kimi-K2.6 — tenant-wide policy issues are critical"
     },
     {
       "id": "KI-003",
-      "pattern": ["tenant-wide", "all users", "everyone affected", "entire tenant"],
+      "pattern": ["tenant-wide", "all users", "everyone affected", "entire tenant", "all accounts"],
       "title": "Tenant-Wide Outage",
       "severity": "high",
       "recommendation": "Route to Kimi-K2.6 — tenant-wide impact requires highest capability model"
     },
     {
       "id": "KI-004",
-      "pattern": ["domain controller", "dc failure", "active directory down"],
+      "pattern": ["domain controller", "dc failure", "active directory down", "dc migration"],
       "title": "Domain Controller Failure",
       "severity": "high",
       "recommendation": "Route to Kimi-K2.6 — infrastructure failure requires advanced triage"
@@ -37,24 +37,38 @@
     },
     {
       "id": "KI-006",
-      "pattern": ["sharepoint permissions", "sharepoint broken", "onedrive sync"],
+      "pattern": ["sharepoint permissions", "sharepoint broken", "onedrive sync", "sharepoint access"],
       "title": "SharePoint Permission or Sync Issue",
       "severity": "medium",
       "recommendation": "Route to DeepSeek-V4-Flash — configuration issue requiring moderate reasoning"
     },
     {
       "id": "KI-007",
-      "pattern": ["teams calls dropping", "teams audio", "teams video"],
+      "pattern": ["teams calls dropping", "teams audio", "teams video", "teams call quality"],
       "title": "Microsoft Teams Call Quality Issue",
       "severity": "medium",
       "recommendation": "Route to DeepSeek-V4-Flash — network or update related issue"
     },
     {
       "id": "KI-008",
-      "pattern": ["outlook not syncing", "outlook offline", "email not sending"],
+      "pattern": ["outlook not syncing", "outlook offline", "email not sending", "outlook sync", "not syncing emails", "emails not syncing"],
       "title": "Outlook Sync Failure",
       "severity": "medium",
       "recommendation": "Route to DeepSeek-V4-Flash — mail flow issue requiring moderate investigation"
+    },
+    {
+      "id": "KI-009",
+      "pattern": ["production down", "outage", "service down", "critical failure", "system down"],
+      "title": "Production Outage",
+      "severity": "high",
+      "recommendation": "Route to Kimi-K2.6 — production outages require immediate advanced triage"
+    },
+    {
+      "id": "KI-010",
+      "pattern": ["security incident", "breach", "ransomware", "malware", "phishing attack"],
+      "title": "Security Incident",
+      "severity": "high",
+      "recommendation": "Route to Kimi-K2.6 — security incidents require advanced reasoning and immediate escalation"
     }
   ]
 }

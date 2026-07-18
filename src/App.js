@@ -167,8 +167,7 @@ function App() {
     if (!livePrompt.trim()) return;
     setLiveLoading(true);
     try {
-      const res = await fetch('https://fusebox-api-burners.azurewebsites.net/api/route',
- {
+      const res = await fetch('https://fusebox-api-burners.azurewebsites.net/api/route', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: livePrompt }),
@@ -188,6 +187,7 @@ function App() {
           live: true,
           aiResponse: data.response,
           reason: data.reason,
+          knowledgeBase: data.knowledgeBase,
         };
         return [newEntry, ...prev].slice(0, 20);
       });
@@ -225,7 +225,6 @@ function App() {
       <div className="fixed-panel">
         <header className="header">
           <div className="header-left">
-            <span className="eyebrow">Insight Managed Services</span>
             <h1 className="title">Project FuseBox</h1>
             <span className="subtitle">Enterprise AI FinOps Platform</span>
           </div>
@@ -275,6 +274,16 @@ function App() {
             {liveLoading ? 'Routing...' : 'Submit Live'}
           </button>
         </div>
+
+        {liveLoading && (
+          <div className="flame-container">
+            <div className="flame">
+              <div className="flame-outer"></div>
+              <div className="flame-inner"></div>
+            </div>
+            <span className="flame-text">FuseBox Routing...</span>
+          </div>
+        )}
 
         <div className="comparison-container">
           <div className="comparison-cards">
@@ -392,6 +401,7 @@ function App() {
                 <div className="ai-response">
                   <span className="ai-response-label">AI Triage Response</span>
                   {entry.reason && <p className="ai-reason">Routing reason: {entry.reason}</p>}
+                  {entry.knowledgeBase && <p className="ai-reason">Knowledge base: {entry.knowledgeBase}</p>}
                   <p className="ai-response-text">{entry.aiResponse.replace(/[#*`_~]/g, '').trim()}</p>
                 </div>
               )}
