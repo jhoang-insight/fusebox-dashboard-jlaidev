@@ -1,0 +1,60 @@
+{
+  "knownIssues": [
+    {
+      "id": "KI-001",
+      "pattern": ["azure ad connect", "ad connect", "directory sync"],
+      "title": "Azure AD Connect Sync Failure",
+      "severity": "high",
+      "recommendation": "Route to Kimi-K2.6 — hybrid identity issues require advanced reasoning"
+    },
+    {
+      "id": "KI-002",
+      "pattern": ["conditional access", "mfa blocked", "mfa policy"],
+      "title": "Conditional Access Policy Blocking Users",
+      "severity": "high",
+      "recommendation": "Route to Kimi-K2.6 — tenant-wide policy issues are critical"
+    },
+    {
+      "id": "KI-003",
+      "pattern": ["tenant-wide", "all users", "everyone affected", "entire tenant"],
+      "title": "Tenant-Wide Outage",
+      "severity": "high",
+      "recommendation": "Route to Kimi-K2.6 — tenant-wide impact requires highest capability model"
+    },
+    {
+      "id": "KI-004",
+      "pattern": ["domain controller", "dc failure", "active directory down"],
+      "title": "Domain Controller Failure",
+      "severity": "high",
+      "recommendation": "Route to Kimi-K2.6 — infrastructure failure requires advanced triage"
+    },
+    {
+      "id": "KI-005",
+      "pattern": ["azure virtual desktop", "avd", "windows 365", "virtual desktop"],
+      "title": "Azure Virtual Desktop Outage",
+      "severity": "high",
+      "recommendation": "Route to Kimi-K2.6 — AVD issues often involve complex networking and identity"
+    },
+    {
+      "id": "KI-006",
+      "pattern": ["sharepoint permissions", "sharepoint broken", "onedrive sync"],
+      "title": "SharePoint Permission or Sync Issue",
+      "severity": "medium",
+      "recommendation": "Route to DeepSeek-V4-Flash — configuration issue requiring moderate reasoning"
+    },
+    {
+      "id": "KI-007",
+      "pattern": ["teams calls dropping", "teams audio", "teams video"],
+      "title": "Microsoft Teams Call Quality Issue",
+      "severity": "medium",
+      "recommendation": "Route to DeepSeek-V4-Flash — network or update related issue"
+    },
+    {
+      "id": "KI-008",
+      "pattern": ["outlook not syncing", "outlook offline", "email not sending"],
+      "title": "Outlook Sync Failure",
+      "severity": "medium",
+      "recommendation": "Route to DeepSeek-V4-Flash — mail flow issue requiring moderate investigation"
+    }
+  ]
+}
