@@ -278,9 +278,6 @@ function App() {
         {liveLoading && (
   <div className="flame-container">
     <div className="token-flame">
-      <div className="token-flame-left"></div>
-      <div className="token-flame-center"></div>
-      <div className="token-flame-right"></div>
       <div className="token-coin">
         <span className="token-coin-label">FB</span>
       </div>
@@ -288,6 +285,7 @@ function App() {
     <span className="flame-text">FuseBox Routing...</span>
   </div>
 )}
+
 
 
 
@@ -403,8 +401,9 @@ function App() {
               <p className="log-prompt">
                 <span className="prompt-label">Prompt: </span>{entry.prompt}
               </p>
-              {entry.aiResponse && (
-                <div className="ai-response">
+              {(entry.aiResponse || entry.reason) && (
+  <div className="ai-response">
+
                   <span className="ai-response-label">AI Triage Response</span>
                   {entry.reason && <p className="ai-reason">Routing reason: {entry.reason}</p>}
                   {entry.knowledgeBase && <p className="ai-reason">Knowledge base: {entry.knowledgeBase}</p>}

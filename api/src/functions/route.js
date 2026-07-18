@@ -111,7 +111,6 @@ async function callTriageModel(model, prompt, context) {
   return response;
 }
 
-}
 
 app.http("route", {
   methods: ["POST", "OPTIONS"],
