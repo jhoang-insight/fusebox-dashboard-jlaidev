@@ -276,14 +276,17 @@ function App() {
         </div>
 
         {liveLoading && (
-          <div className="flame-container">
-            <div className="flame">
-              <div className="flame-outer"></div>
-              <div className="flame-inner"></div>
-            </div>
-            <span className="flame-text">FuseBox Routing...</span>
-          </div>
-        )}
+  <div className="flame-container">
+    <div className="flame">
+      <div className="flame-particle"></div>
+      <div className="flame-particle"></div>
+      <div className="flame-particle"></div>
+      <div className="flame-particle"></div>
+    </div>
+    <span className="flame-text">FuseBox Routing...</span>
+  </div>
+)}
+
 
         <div className="comparison-container">
           <div className="comparison-cards">
