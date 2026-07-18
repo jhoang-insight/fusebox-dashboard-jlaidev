@@ -20,12 +20,6 @@ const CHEAP_COST_PER_1K = 0.0001;
 const MID_COST_PER_1K = 0.0014;
 const PREMIUM_COST_PER_1K = 0.007;
 
-const ALERT_THRESHOLD = 0.0003;
-const BUDGET_LIMIT = 0.001;
-
-let totalSpend = 0;
-let alertSent = { threshold: false, exceeded: false };
-
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -245,20 +239,11 @@ app.http("route", {
 
     const triageText = response?.choices?.[0]?.message?.content || response?.choices?.[0]?.message?.reasoning_content || "Triage response unavailable";
 
-    // Step 4 — Budget tracking and email alerts
-    totalSpend += cost;
-
-    if (totalSpend >= BUDGET_LIMIT && !alertSent.exceeded) {
-      alertSent.exceeded = true;
+    // Step 4 — Email alert on high risk complex tickets
+    if (model === PREMIUM_MODEL && risk === "high") {
       await sendAlertEmail(
-        "URGENT: FuseBox Budget Limit Exceeded",
-        `Project FuseBox AI spend has exceeded the budget limit of $${BUDGET_LIMIT.toFixed(4)}.\n\nCurrent spend: $${totalSpend.toFixed(6)}\nTriggered by: ${prompt}\nModel used: ${model}\nCost of this request: $${cost.toFixed(6)}\n\nReview AI spend immediately.`
-      );
-    } else if (totalSpend >= ALERT_THRESHOLD && !alertSent.threshold) {
-      alertSent.threshold = true;
-      await sendAlertEmail(
-        "WARNING: FuseBox Budget Threshold Reached",
-        `Project FuseBox AI spend has reached the alert threshold of $${ALERT_THRESHOLD.toFixed(4)}.\n\nCurrent spend: $${totalSpend.toFixed(6)}\nTriggered by: ${prompt}\nModel used: ${model}\nCost of this request: $${cost.toFixed(6)}\n\nMonitor spend closely.`
+        "ALERT: FuseBox Routed High-Risk Ticket to Premium Model",
+        `A high-risk complex ticket has been routed to Kimi-K2.6.\n\nTicket: ${prompt}\nModel: ${model}\nComplexity: ${complexity}\nRisk: ${risk}\nCost: $${cost.toFixed(6)}\nKnowledge Base: ${knownIssueContext.matched ? knownIssueContext.issues.map(i => i.title).join(", ") : "No match"}\n\nReview AI spend in the FuseBox dashboard.`
       );
     }
 
