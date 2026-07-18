@@ -46,8 +46,9 @@ async function sendAlertEmail(subject, body) {
         </body></html>`
       }
     };
-    const poller = await client.beginSend(message);
-    await poller.pollUntilDone();
+        const poller = await client.beginSend(message);
+    poller.pollUntilDone().catch(e => console.error("Email poll failed:", e.message));
+
   } catch (e) {
     console.error("Email alert failed:", e.message);
   }
