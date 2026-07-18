@@ -1,15 +1,21 @@
-const { OpenAIClient, AzureKeyCredential } = require("@azure/openai");
+const OpenAI = require("openai").default;
 const { app } = require("@azure/functions");
 
-const ENDPOINT = "https://fusebox-resource.openai.azure.com/";
+const ENDPOINT = "https://fusebox-resource.services.ai.azure.com/openai/v1";
 const API_KEY = process.env.AZURE_API_KEY;
-const API_VERSION = "2024-12-01-preview";
 
 const CHEAP_MODEL = "phi-4-mini";
 const EXPENSIVE_MODEL = "DeepSeek-V4-Flash";
 
 const CHEAP_COST_PER_1K = 0.0001;
 const EXPENSIVE_COST_PER_1K = 0.0014;
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Content-Type": "application/json"
+};
 
 function scoreComplexity(prompt) {
   const text = prompt.toLowerCase();
@@ -39,9 +45,16 @@ function scoreComplexity(prompt) {
 }
 
 app.http("route", {
-  methods: ["POST"],
+  methods: ["POST", "OPTIONS"],
   authLevel: "anonymous",
   handler: async (request, context) => {
+
+    if (request.method === "OPTIONS") {
+      return {
+        status: 204,
+        headers: CORS_HEADERS
+      };
+    }
 
     context.log("FuseBox router received request");
 
@@ -51,6 +64,7 @@ app.http("route", {
     } catch (e) {
       return {
         status: 400,
+        headers: CORS_HEADERS,
         jsonBody: { error: "Invalid JSON body" }
       };
     }
@@ -59,6 +73,7 @@ app.http("route", {
     if (!prompt) {
       return {
         status: 400,
+        headers: CORS_HEADERS,
         jsonBody: { error: "prompt is required" }
       };
     }
@@ -66,16 +81,16 @@ app.http("route", {
     const { complexity, risk, model } = scoreComplexity(prompt);
     const costPer1k = model === CHEAP_MODEL ? CHEAP_COST_PER_1K : EXPENSIVE_COST_PER_1K;
 
-    const client = new OpenAIClient(
-      ENDPOINT,
-      new AzureKeyCredential(API_KEY)
-    );
+    const client = new OpenAI({
+      baseURL: ENDPOINT,
+      apiKey: API_KEY,
+    });
 
     let response;
     try {
-      response = await client.getChatCompletions(
+      response = await client.chat.completions.create({
         model,
-        [
+        messages: [
           {
             role: "system",
             content: "You are a helpful IT service desk assistant. Provide a brief, clear triage summary and recommended next steps for the reported issue."
@@ -85,24 +100,26 @@ app.http("route", {
             content: prompt
           }
         ],
-        { maxTokens: 300 }
-      );
+        max_tokens: 300,
+      });
     } catch (e) {
       context.log("Model call failed:", e.message);
       return {
         status: 500,
+        headers: CORS_HEADERS,
         jsonBody: { error: "Model call failed", details: e.message }
       };
     }
 
     const usage = response.usage;
-    const totalTokens = usage.totalTokens;
+    const totalTokens = usage.total_tokens;
     const cost = (totalTokens / 1000) * costPer1k;
     const expensiveCost = (totalTokens / 1000) * EXPENSIVE_COST_PER_1K;
     const savings = model === CHEAP_MODEL ? expensiveCost - cost : 0;
 
     return {
       status: 200,
+      headers: CORS_HEADERS,
       jsonBody: {
         prompt,
         model,
