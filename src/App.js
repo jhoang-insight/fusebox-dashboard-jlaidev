@@ -81,10 +81,9 @@ function App() {
   const [emailSent, setEmailSent] = useState({ threshold: false, exceeded: false });
   const intervalRef = useRef(null);
 
-  // Email alert simulation — fires once per threshold crossing
   useEffect(() => {
     if (alertActive && !emailSent.threshold) {
-      console.log('[FuseBox Alert] Budget threshold reached — alert email would fire here via Azure Communication Services or SendGrid.');
+      console.log('[FuseBox Alert] Budget threshold reached — alert email would fire here via Azure Communication Services.');
       setEmailSent(prev => ({ ...prev, threshold: true }));
     }
     if (budgetExceeded && !emailSent.exceeded) {
