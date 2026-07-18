@@ -102,13 +102,15 @@ async function callTriageModel(model, prompt, context) {
     messages: [
       {
         role: "system",
-        content: "You are a helpful IT service desk assistant. Provide a brief, clear triage summary and recommended next steps."
+        content: "You are a helpful IT service desk assistant. Provide a brief triage summary and 3 recommended next steps. Be concise."
       },
       { role: "user", content: prompt }
     ],
-    max_tokens: 300,
+    max_tokens: 200,
   });
   return response;
+}
+
 }
 
 app.http("route", {

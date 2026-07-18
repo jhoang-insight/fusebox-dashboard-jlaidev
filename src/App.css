@@ -626,88 +626,100 @@ body {
   gap: 10px;
 }
 
-.flame {
+.token-flame {
   position: relative;
   width: 80px;
-  height: 80px;
+  height: 100px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
 }
 
-.flame-particle {
+.token-coin {
   position: absolute;
   bottom: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffd700, #ff8c00, #D30E8C);
+  border: 3px solid #ffd700;
+  box-shadow: 0 0 16px rgba(255, 140, 0, 0.6), 0 0 32px rgba(211, 14, 140, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  animation: coinPulse 1s ease-in-out infinite alternate;
+}
+
+.token-coin-label {
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 0 6px rgba(0,0,0,0.8);
+  letter-spacing: -1px;
+}
+
+.token-flame-left {
+  position: absolute;
+  bottom: 44px;
+  left: 8px;
+  width: 18px;
+  height: 40px;
+  background: linear-gradient(to top, #ff4500, #ff8c00, #ffd700, transparent);
   border-radius: 50% 50% 20% 20%;
-  animation: burn 0.6s ease-in-out infinite alternate;
-  transform-origin: bottom center;
-}
-
-.flame-particle:nth-child(1) {
-  width: 50px;
-  height: 70px;
-  background: linear-gradient(to top, #ff4500, #ff8c00, #ffd700);
-  left: 50%;
-  transform: translateX(-50%);
-  animation-duration: 0.5s;
+  animation: flameLeft 0.5s ease-in-out infinite alternate;
   filter: blur(1px);
-  z-index: 3;
+  transform-origin: bottom center;
+  z-index: 5;
 }
 
-.flame-particle:nth-child(2) {
-  width: 70px;
-  height: 60px;
-  background: linear-gradient(to top, #D30E8C, #ff4500, #ff8c00);
+.token-flame-center {
+  position: absolute;
+  bottom: 48px;
   left: 50%;
   transform: translateX(-50%);
-  animation-duration: 0.7s;
-  animation-direction: alternate-reverse;
-  filter: blur(2px);
-  z-index: 2;
-  opacity: 0.85;
-}
-
-.flame-particle:nth-child(3) {
-  width: 80px;
-  height: 50px;
-  background: linear-gradient(to top, #582873, #D30E8C, #ff4500);
-  left: 50%;
-  transform: translateX(-50%);
-  animation-duration: 0.9s;
-  filter: blur(3px);
-  z-index: 1;
-  opacity: 0.7;
-}
-
-.flame-particle:nth-child(4) {
-  width: 30px;
-  height: 80px;
-  background: linear-gradient(to top, #fff8e1, #ffd700, #ff8c00);
-  left: 50%;
-  transform: translateX(-50%);
-  animation-duration: 0.4s;
-  animation-direction: alternate-reverse;
+  width: 22px;
+  height: 55px;
+  background: linear-gradient(to top, #ff4500, #ff8c00, #ffd700, transparent);
+  border-radius: 50% 50% 20% 20%;
+  animation: flameCenter 0.4s ease-in-out infinite alternate;
   filter: blur(0.5px);
-  z-index: 4;
-  border-radius: 50% 50% 10% 10%;
+  transform-origin: bottom center;
+  z-index: 6;
 }
 
-@keyframes burn {
-  0% {
-    transform: translateX(-50%) scaleX(1) scaleY(1) rotate(-2deg);
-  }
-  25% {
-    transform: translateX(-48%) scaleX(0.92) scaleY(1.08) rotate(1deg);
-  }
-  50% {
-    transform: translateX(-52%) scaleX(1.08) scaleY(0.95) rotate(-1deg);
-  }
-  75% {
-    transform: translateX(-49%) scaleX(0.96) scaleY(1.04) rotate(2deg);
-  }
-  100% {
-    transform: translateX(-50%) scaleX(1.02) scaleY(0.98) rotate(-2deg);
-  }
+.token-flame-right {
+  position: absolute;
+  bottom: 44px;
+  right: 8px;
+  width: 18px;
+  height: 38px;
+  background: linear-gradient(to top, #D30E8C, #ff4500, #ff8c00, transparent);
+  border-radius: 50% 50% 20% 20%;
+  animation: flameRight 0.6s ease-in-out infinite alternate;
+  filter: blur(1px);
+  transform-origin: bottom center;
+  z-index: 5;
+}
+
+@keyframes flameLeft {
+  0% { transform: scaleX(1) scaleY(1) rotate(-8deg); opacity: 0.9; }
+  100% { transform: scaleX(0.85) scaleY(1.15) rotate(-12deg); opacity: 1; }
+}
+
+@keyframes flameCenter {
+  0% { transform: translateX(-50%) scaleX(1) scaleY(1); opacity: 1; }
+  100% { transform: translateX(-50%) scaleX(0.9) scaleY(1.1); opacity: 0.95; }
+}
+
+@keyframes flameRight {
+  0% { transform: scaleX(1) scaleY(1) rotate(8deg); opacity: 0.9; }
+  100% { transform: scaleX(0.85) scaleY(1.12) rotate(12deg); opacity: 1; }
+}
+
+@keyframes coinPulse {
+  0% { box-shadow: 0 0 16px rgba(255,140,0,0.6), 0 0 32px rgba(211,14,140,0.4); }
+  100% { box-shadow: 0 0 24px rgba(255,140,0,0.9), 0 0 48px rgba(211,14,140,0.6); }
 }
 
 .flame-text {
@@ -718,3 +730,4 @@ body {
   font-weight: bold;
   animation: pulse 1s infinite;
 }
+

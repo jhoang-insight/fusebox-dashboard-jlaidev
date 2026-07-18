@@ -277,15 +277,18 @@ function App() {
 
         {liveLoading && (
   <div className="flame-container">
-    <div className="flame">
-      <div className="flame-particle"></div>
-      <div className="flame-particle"></div>
-      <div className="flame-particle"></div>
-      <div className="flame-particle"></div>
+    <div className="token-flame">
+      <div className="token-flame-left"></div>
+      <div className="token-flame-center"></div>
+      <div className="token-flame-right"></div>
+      <div className="token-coin">
+        <span className="token-coin-label">FB</span>
+      </div>
     </div>
     <span className="flame-text">FuseBox Routing...</span>
   </div>
 )}
+
 
 
         <div className="comparison-container">
@@ -405,7 +408,7 @@ function App() {
                   <span className="ai-response-label">AI Triage Response</span>
                   {entry.reason && <p className="ai-reason">Routing reason: {entry.reason}</p>}
                   {entry.knowledgeBase && <p className="ai-reason">Knowledge base: {entry.knowledgeBase}</p>}
-                  <p className="ai-response-text">{entry.aiResponse.replace(/[#*`_~]/g, '').trim()}</p>
+                  <p className="ai-response-text">{entry.aiResponse ? entry.aiResponse.replace(/[#*`_~]/g, '').trim() : ''}</p>
                 </div>
               )}
               <div className="log-footer">
