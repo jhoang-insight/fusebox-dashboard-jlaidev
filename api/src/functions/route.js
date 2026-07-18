@@ -1,5 +1,6 @@
 const OpenAI = require("openai").default;
 const { app } = require("@azure/functions");
+const { EmailClient } = require("@azure/communication-email");
 
 const ENDPOINT = "https://fusebox-resource.services.ai.azure.com/openai/v1";
 const AGENT_ENDPOINT = "https://FuseBox-resource.services.ai.azure.com/api/projects/FuseBox/agents/FuseBox/endpoint/protocols/openai/responses?api-version=v1";
@@ -7,6 +8,9 @@ const API_KEY = process.env.AZURE_API_KEY;
 const STORAGE_ACCOUNT_NAME = process.env.STORAGE_ACCOUNT_NAME;
 const STORAGE_CONTAINER_NAME = process.env.STORAGE_CONTAINER_NAME;
 const BLOB_SAS_TOKEN = process.env.BLOB_SAS_TOKEN;
+const ACS_CONNECTION_STRING = process.env.ACS_CONNECTION_STRING;
+const ACS_SENDER = process.env.ACS_SENDER;
+const ACS_RECIPIENT = process.env.ACS_RECIPIENT;
 
 const CHEAP_MODEL = "phi-4-mini";
 const MID_MODEL = "DeepSeek-V4-Flash";
@@ -16,12 +20,44 @@ const CHEAP_COST_PER_1K = 0.0001;
 const MID_COST_PER_1K = 0.0014;
 const PREMIUM_COST_PER_1K = 0.007;
 
+const ALERT_THRESHOLD = 0.0003;
+const BUDGET_LIMIT = 0.001;
+
+let totalSpend = 0;
+let alertSent = { threshold: false, exceeded: false };
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Content-Type": "application/json"
 };
+
+async function sendAlertEmail(subject, body) {
+  try {
+    const client = new EmailClient(ACS_CONNECTION_STRING);
+    const message = {
+      senderAddress: ACS_SENDER,
+      recipients: { to: [{ address: ACS_RECIPIENT }] },
+      content: {
+        subject,
+        plainText: body,
+        html: `<html><body style="font-family:Arial,sans-serif;background:#0e0e14;color:white;padding:24px;">
+          <div style="max-width:600px;margin:0 auto;background:#1a0a2e;border:1px solid #D30E8C;border-radius:12px;padding:24px;">
+            <h2 style="color:#D30E8C;margin-top:0;">Project FuseBox — AI Spend Alert</h2>
+            <p style="color:#ccc;">${body.replace(/\n/g, "<br/>")}</p>
+            <hr style="border-color:#582873;"/>
+            <p style="color:#666;font-size:12px;">Team Token Burners — Insight Hackathon 2026</p>
+          </div>
+        </body></html>`
+      }
+    };
+    const poller = await client.beginSend(message);
+    await poller.pollUntilDone();
+  } catch (e) {
+    console.error("Email alert failed:", e.message);
+  }
+}
 
 async function checkKnownIssues(prompt) {
   try {
@@ -78,8 +114,6 @@ async function callFuseBoxAgent(prompt, knownIssueContext, context) {
   const text = data?.output?.[0]?.content?.[0]?.text;
   if (!text) throw new Error("No text content in FuseBox agent response");
 
-  context.log("FuseBox agent classification text:", text);
-
   const cleaned = text.replace(/```json|```/g, "").trim();
   const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("No JSON found in FuseBox agent response");
@@ -112,7 +146,8 @@ async function callTriageModel(model, prompt, context) {
           },
           { role: "user", content: prompt }
         ],
-        max_tokens: 1000
+        max_tokens: 2000,
+        stream: false
       })
     });
     const data = await res.json();
@@ -133,7 +168,6 @@ async function callTriageModel(model, prompt, context) {
   });
   return response;
 }
-
 
 app.http("route", {
   methods: ["POST", "OPTIONS"],
@@ -211,7 +245,22 @@ app.http("route", {
 
     const triageText = response?.choices?.[0]?.message?.content || response?.choices?.[0]?.message?.reasoning_content || "Triage response unavailable";
 
+    // Step 4 — Budget tracking and email alerts
+    totalSpend += cost;
 
+    if (totalSpend >= BUDGET_LIMIT && !alertSent.exceeded) {
+      alertSent.exceeded = true;
+      await sendAlertEmail(
+        "URGENT: FuseBox Budget Limit Exceeded",
+        `Project FuseBox AI spend has exceeded the budget limit of $${BUDGET_LIMIT.toFixed(4)}.\n\nCurrent spend: $${totalSpend.toFixed(6)}\nTriggered by: ${prompt}\nModel used: ${model}\nCost of this request: $${cost.toFixed(6)}\n\nReview AI spend immediately.`
+      );
+    } else if (totalSpend >= ALERT_THRESHOLD && !alertSent.threshold) {
+      alertSent.threshold = true;
+      await sendAlertEmail(
+        "WARNING: FuseBox Budget Threshold Reached",
+        `Project FuseBox AI spend has reached the alert threshold of $${ALERT_THRESHOLD.toFixed(4)}.\n\nCurrent spend: $${totalSpend.toFixed(6)}\nTriggered by: ${prompt}\nModel used: ${model}\nCost of this request: $${cost.toFixed(6)}\n\nMonitor spend closely.`
+      );
+    }
 
     return {
       status: 200,
