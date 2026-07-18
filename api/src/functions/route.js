@@ -96,6 +96,29 @@ async function callFuseBoxAgent(prompt, knownIssueContext, context) {
 }
 
 async function callTriageModel(model, prompt, context) {
+  if (model === PREMIUM_MODEL) {
+    const res = await fetch(`${ENDPOINT}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": API_KEY
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: "system",
+            content: "You are a helpful IT service desk assistant. Provide a brief triage summary and 3 recommended next steps. Be concise."
+          },
+          { role: "user", content: prompt }
+        ],
+        max_tokens: 1000
+      })
+    });
+    const data = await res.json();
+    return data;
+  }
+
   const client = new OpenAI({ baseURL: ENDPOINT, apiKey: API_KEY });
   const response = await client.chat.completions.create({
     model,
@@ -106,7 +129,7 @@ async function callTriageModel(model, prompt, context) {
       },
       { role: "user", content: prompt }
     ],
-    max_tokens: 200,
+    max_tokens: 500,
   });
   return response;
 }
@@ -139,12 +162,12 @@ app.http("route", {
     const knownIssueContext = await checkKnownIssues(prompt);
     context.log("Known issue check result:", knownIssueContext);
 
-    // Step 2 — Agent classification with 8 second timeout
+    // Step 2 — Agent classification with 12 second timeout
     let classification;
     try {
       const agentPromise = callFuseBoxAgent(prompt, knownIssueContext, context);
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Agent timeout")), 8000)
+        setTimeout(() => reject(new Error("Agent timeout")), 12000)
       );
       classification = await Promise.race([agentPromise, timeoutPromise]);
       context.log("FuseBox agent classification:", classification);
@@ -186,6 +209,10 @@ app.http("route", {
     const premiumCost = (totalTokens / 1000) * PREMIUM_COST_PER_1K;
     const savings = model !== PREMIUM_MODEL ? premiumCost - cost : 0;
 
+    const triageText = response?.choices?.[0]?.message?.content || response?.choices?.[0]?.message?.reasoning_content || "Triage response unavailable";
+
+
+
     return {
       status: 200,
       headers: CORS_HEADERS,
@@ -195,7 +222,7 @@ app.http("route", {
         complexity,
         risk,
         reason,
-        response: response.choices[0].message.content,
+        response: triageText,
         tokens: totalTokens,
         cost: cost.toFixed(6),
         savings: savings > 0 ? savings.toFixed(6) : "N/A",
