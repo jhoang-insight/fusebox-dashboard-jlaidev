@@ -167,7 +167,8 @@ function App() {
     if (!livePrompt.trim()) return;
     setLiveLoading(true);
     try {
-      const res = await fetch('https://fusebox-api-jhoang.azurewebsites.net/api/route', {
+      const res = await fetch('https://fusebox-api-burners.azurewebsites.net/api/route',
+ {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: livePrompt }),
