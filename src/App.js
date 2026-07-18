@@ -31,34 +31,50 @@ function formatCost(value) {
 }
 
 function generateCSV(log, totalCost, totalSavings, cheapCount, midCount, premiumCount) {
-  const header = ['Timestamp','Model','Complexity','Risk','Tokens','Cost ($)','Savings ($)','Live','Prompt'];
+  const escape = val => {
+    if (val === null || val === undefined) return '';
+    const str = String(val);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+  };
+
+  const headers = ['Timestamp', 'Model', 'Complexity', 'Risk', 'Tokens', 'Cost ($)', 'Savings ($)', 'Live', 'Prompt'];
+
   const rows = log.map(e => [
-    e.timestamp,
-    e.model,
-    e.complexity,
-    e.risk,
-    e.tokens,
-    e.cost,
-    e.savings,
-    e.live ? 'Yes' : 'No',
-    '"' + e.prompt.replace(/"/g, '""') + '"'
-  ]);
-  const summary = [
-    [],
-    ['SUMMARY'],
-    ['Total Cost', formatCost(totalCost)],
-    ['Total Savings', formatCost(totalSavings)],
-    ['Routed to Phi-4-mini', cheapCount],
-    ['Routed to DeepSeek-V4-Flash', midCount],
-    ['Routed to Kimi-K2.6', premiumCount],
-    ['Total Processed', cheapCount + midCount + premiumCount],
+    escape(e.timestamp),
+    escape(e.model),
+    escape(e.complexity),
+    escape(e.risk),
+    escape(e.tokens),
+    escape(e.cost),
+    escape(e.savings),
+    escape(e.live ? 'Yes' : 'No'),
+    escape(e.prompt)
+  ].join(','));
+
+  const total = cheapCount + midCount + premiumCount;
+  const optRate = total > 0 ? Math.round(((cheapCount + midCount) / total) * 100) : 0;
+
+  const summaryRows = [
+    '',
+    'SUMMARY',
+    'Total Cost,' + formatCost(totalCost),
+    'Total Savings,' + formatCost(totalSavings),
+    'Routed to Phi-4-mini,' + cheapCount,
+    'Routed to DeepSeek-V4-Flash,' + midCount,
+    'Routed to Kimi-K2.6,' + premiumCount,
+    'Total Processed,' + total,
+    'Optimization Rate,' + optRate + '%',
   ];
-  const csvContent = [header, ...rows, ...summary].map(r => r.join(',')).join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv' });
+
+  const csvContent = [headers.join(','), ...rows, ...summaryRows].join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'fusebox-report-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.download = 'fusebox-report-' + new Date().toISOString().slice(0, 10) + '.csv';
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -82,12 +98,16 @@ function App() {
   const intervalRef = useRef(null);
 
   useEffect(() => {
+    document.title = '⚡ Project FuseBox';
+  }, []);
+
+  useEffect(() => {
     if (alertActive && !emailSent.threshold) {
-      console.log('[FuseBox Alert] Budget threshold reached — alert email would fire here via Azure Communication Services.');
+      console.log('[FuseBox Alert] Budget threshold reached.');
       setEmailSent(prev => ({ ...prev, threshold: true }));
     }
     if (budgetExceeded && !emailSent.exceeded) {
-      console.log('[FuseBox Alert] Budget EXCEEDED — critical alert email would fire here.');
+      console.log('[FuseBox Alert] Budget EXCEEDED.');
       setEmailSent(prev => ({ ...prev, exceeded: true }));
     }
   }, [alertActive, budgetExceeded, emailSent]);
@@ -276,18 +296,15 @@ function App() {
         </div>
 
         {liveLoading && (
-  <div className="flame-container">
-    <div className="token-flame">
-      <div className="token-coin">
-        <span className="token-coin-label">FB</span>
-      </div>
-    </div>
-    <span className="flame-text">FuseBox Routing...</span>
-  </div>
-)}
-
-
-
+          <div className="flame-container">
+            <div className="token-flame">
+              <div className="token-coin">
+                <span className="token-coin-label">FB</span>
+              </div>
+            </div>
+            <span className="flame-text">FuseBox Routing...</span>
+          </div>
+        )}
 
         <div className="comparison-container">
           <div className="comparison-cards">
@@ -402,12 +419,11 @@ function App() {
                 <span className="prompt-label">Prompt: </span>{entry.prompt}
               </p>
               {(entry.aiResponse || entry.reason) && (
-  <div className="ai-response">
-
+                <div className="ai-response">
                   <span className="ai-response-label">AI Triage Response</span>
                   {entry.reason && <p className="ai-reason">Routing reason: {entry.reason}</p>}
                   {entry.knowledgeBase && <p className="ai-reason">Knowledge base: {entry.knowledgeBase}</p>}
-                  <p className="ai-response-text">{entry.aiResponse ? entry.aiResponse.replace(/[#*`_~]/g, '').trim() : ''}</p>
+                  {entry.aiResponse && <p className="ai-response-text">{entry.aiResponse.replace(/[#*`_~]/g, '').trim()}</p>}
                 </div>
               )}
               <div className="log-footer">
