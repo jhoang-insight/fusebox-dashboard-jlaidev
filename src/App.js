@@ -13,6 +13,7 @@ const PROMPTS = [
   { text: "47 users cannot access Azure Virtual Desktop across three sites.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
   { text: "Conditional Access policy blocking all MFA accounts from M365. Tenant-wide.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
   { text: "Azure AD Connect sync failing after domain controller migration.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
+  { text: "A user is having some issues with a critical business application the whole company relies on. It started this morning and they are not sure what changed.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
 ];
 
 const BUDGET_LIMIT = 0.001;
@@ -106,7 +107,7 @@ function App() {
     document.title = '⚡ Project FuseBox';
   }, []);
 
-    useEffect(() => {
+  useEffect(() => {
     if (alertActive && !emailSent.threshold) {
       setEmailSent(prev => ({ ...prev, threshold: true }));
       fetch('https://fusebox-api-burners.azurewebsites.net/api/alert', {
@@ -137,7 +138,6 @@ function App() {
     }
   }, [alertActive, budgetExceeded, emailSent, totalCost, log]);
 
-
   useEffect(() => {
     if (!running) return;
     let index = 0;
@@ -155,7 +155,7 @@ function App() {
       setLog(prev => {
         const newEntry = {
           id: Date.now(),
-          timestamp: new Date().toLocaleTimeString(),
+          timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
           prompt: prompt.text,
           complexity: prompt.complexity,
           model: prompt.model,
@@ -232,7 +232,7 @@ function App() {
       setLog(prev => {
         const newEntry = {
           id: Date.now(),
-          timestamp: data.timestamp,
+          timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
           prompt: data.prompt,
           complexity: data.complexity,
           model: data.model,
@@ -245,13 +245,13 @@ function App() {
           reason: data.reason,
           knowledgeBase: data.knowledgeBase,
           memoryUsed: data.memoryUsed,
-selfCorrected: data.selfCorrected,  
-confidence: data.confidence,
-anomalyDetected: data.anomalyDetected,
-anomalyCount: data.anomalyCount,
-confidenceEscalated: data.confidenceEscalated,
-
-
+          selfCorrected: data.selfCorrected,
+          confidence: data.confidence,
+          anomalyDetected: data.anomalyDetected,
+          anomalyCount: data.anomalyCount,
+          confidenceEscalated: data.confidenceEscalated,
+          auditorResult: data.auditorResult,
+          auditorOverride: data.auditorOverride,
         };
         return [newEntry, ...prev].slice(0, 20);
       });
@@ -499,29 +499,32 @@ confidenceEscalated: data.confidenceEscalated,
                 </div>
               )}
               <div className="log-footer">
-  <span>Tokens: {entry.tokens}</span>
-  <span>Cost: ${entry.cost}</span>
-  <span>Savings: {entry.savings === 'N/A' ? 'N/A' : `$${entry.savings}`}</span>
-  {entry.confidence > 0 && (
-    <span className={`confidence-badge ${entry.confidence >= 70 ? 'confidence-high' : 'confidence-low'}`}>
-      {entry.confidence}% confidence
-    </span>
-  )}
-  {entry.memoryUsed && entry.memoryUsed !== 'No memory context yet' && (
-    <span className="memory-badge">🧠 {entry.memoryUsed}</span>
-  )}
-  {entry.selfCorrected && (
-    <span className="correction-badge">⚡ Self-corrected</span>
-  )}
-  {entry.anomalyDetected && (
-    <span className="anomaly-badge">🚨 Anomaly — {entry.anomalyCount} similar tickets</span>
-  )}
-  {entry.confidenceEscalated && (
-    <span className="correction-badge">⬆ Confidence escalated</span>
-  )}
-</div>
-
-
+                <span>Tokens: {entry.tokens}</span>
+                <span>Cost: ${entry.cost}</span>
+                <span>Savings: {entry.savings === 'N/A' ? 'N/A' : `$${entry.savings}`}</span>
+                {entry.confidence > 0 && (
+                  <span className={`confidence-badge ${entry.confidence >= 75 ? 'confidence-high' : 'confidence-low'}`}>
+                    {entry.confidence}% confidence
+                  </span>
+                )}
+                {entry.memoryUsed && entry.memoryUsed !== 'No memory context yet' && (
+                  <span className="memory-badge">🧠 {entry.memoryUsed}</span>
+                )}
+                {entry.selfCorrected && (
+                  <span className="correction-badge">⚡ Self-corrected</span>
+                )}
+                {entry.anomalyDetected && (
+                  <span className="anomaly-badge">🚨 Anomaly — {entry.anomalyCount} similar tickets</span>
+                )}
+                {entry.confidenceEscalated && (
+                  <span className="correction-badge">⬆ Confidence escalated</span>
+                )}
+                {entry.auditorResult && (
+                  <span className={`auditor-badge ${entry.auditorOverride ? 'auditor-override' : 'auditor-confirmed'}`}>
+                    🔍 Auditor: {entry.auditorOverride ? `Override — ${entry.auditorResult}` : 'Confirmed'}
+                  </span>
+                )}
+              </div>
             </div>
           ))}
         </div>
