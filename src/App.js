@@ -113,6 +113,7 @@ function App() {
   const [anomalyCount, setAnomalyCount] = useState(0);
   const [incidentRecords, setIncidentRecords] = useState([]);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [expandedEntry, setExpandedEntry] = useState(null);
 
   useEffect(() => {
     document.title = "FuseBox AI Ops";
@@ -165,6 +166,7 @@ function App() {
     setAuditorOverrideCount(0);
     setAnomalyCount(0);
     setIncidentRecords([]);
+    setExpandedEntry(null);
   };
 
   const handleUnlock = () => {
@@ -504,6 +506,13 @@ function App() {
                   <span className={`badge risk-${entry.risk}`}>
                     {entry.risk} risk
                   </span>
+                  <button
+                    className="expand-btn"
+                    onClick={() => setExpandedEntry(entry)}
+                    title="Expand card"
+                  >
+                    ⤢
+                  </button>
                 </div>
                 <p className="log-prompt">
                   <span className="prompt-label">Prompt: </span>
@@ -1025,6 +1034,239 @@ function App() {
           </div>
         </div>
       </div>
+
+      {expandedEntry && (
+        <div className="modal-overlay" onClick={() => setExpandedEntry(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="modal-close-btn"
+              onClick={() => setExpandedEntry(null)}
+            >
+              ✕
+            </button>
+
+            <div className="modal-log-header">
+              <span className="log-time">{expandedEntry.timestamp}</span>
+              <span className="badge live-badge">LIVE</span>
+              <span
+                className={`badge ${expandedEntry.model === "phi-4-mini" ? "badge-cheap" : expandedEntry.model === "DeepSeek-V4-Flash" ? "badge-mid" : "badge-expensive"}`}
+              >
+                {expandedEntry.model}
+              </span>
+              <span className={`badge complexity-${expandedEntry.complexity}`}>
+                {expandedEntry.complexity}
+              </span>
+              <span className={`badge risk-${expandedEntry.risk}`}>
+                {expandedEntry.risk} risk
+              </span>
+            </div>
+
+            <p className="log-prompt">
+              <span className="prompt-label">Prompt: </span>
+              {expandedEntry.prompt}
+            </p>
+
+            {(expandedEntry.aiResponse || expandedEntry.reason) && (
+              <div className="ai-response modal-ai-response">
+                <span className="ai-response-label">AI Triage Response</span>
+                {expandedEntry.reason && (
+                  <p className="ai-reason">
+                    Routing reason: {expandedEntry.reason}
+                  </p>
+                )}
+                {expandedEntry.knowledgeBase && (
+                  <p className="ai-reason">
+                    Knowledge base: {expandedEntry.knowledgeBase}
+                  </p>
+                )}
+                {expandedEntry.aiResponse && (
+                  <p className="ai-response-text">
+                    {expandedEntry.aiResponse.replace(/[#*`_~]/g, "").trim()}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="log-footer">
+              <span>Tokens: {expandedEntry.tokens}</span>
+              <span>Cost: ${expandedEntry.cost}</span>
+              <span>
+                Savings:{" "}
+                {expandedEntry.savings === "N/A"
+                  ? "N/A"
+                  : `$${expandedEntry.savings}`}
+              </span>
+              {expandedEntry.confidence > 0 && (
+                <span
+                  className={`confidence-badge ${expandedEntry.confidence >= 75 ? "confidence-high" : "confidence-low"}`}
+                >
+                  {expandedEntry.confidence}% confidence
+                </span>
+              )}
+              {expandedEntry.memoryUsed &&
+                expandedEntry.memoryUsed !== "No memory context yet" && (
+                  <span
+                    className="memory-badge"
+                    title="This ticket was classified using context from similar past tickets stored in Cosmos DB"
+                  >
+                    🧠 {expandedEntry.memoryUsed}
+                  </span>
+                )}
+              {expandedEntry.selfCorrected && (
+                <span
+                  className="correction-badge"
+                  title="The agent detected uncertainty in its first classification and re-evaluated to produce a higher confidence decision"
+                >
+                  🔄 Self-corrected
+                </span>
+              )}
+              {expandedEntry.anomalyDetected && (
+                <span
+                  className="anomaly-badge"
+                  title="FuseBox AI Ops detected a pattern spike and autonomously escalated this ticket and generated an incident report"
+                >
+                  🚨 Anomaly — {expandedEntry.anomalyCount} similar tickets
+                </span>
+              )}
+              {expandedEntry.confidenceEscalated && (
+                <span
+                  className="correction-badge"
+                  title="Confidence score was below threshold — ticket was automatically escalated to a more capable model"
+                >
+                  ⬆️ Confidence escalated
+                </span>
+              )}
+              {expandedEntry.auditorResult && (
+                <span
+                  className={`auditor-badge ${expandedEntry.auditorOverride ? "auditor-override" : "auditor-confirmed"}`}
+                  title={
+                    expandedEntry.auditorOverride
+                      ? `Auditor Override: ${expandedEntry.auditorResult}`
+                      : `Auditor Confirmed: ${expandedEntry.auditorResult}`
+                  }
+                >
+                  🔍{" "}
+                  {expandedEntry.auditorOverride
+                    ? "Auditor Override"
+                    : "Auditor Confirmed"}
+                </span>
+              )}
+              {expandedEntry.reportUrl && (
+                <a
+                  href={expandedEntry.reportUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="report-link"
+                >
+                  📄 View Full Incident Report
+                </a>
+              )}
+            </div>
+
+            {expandedEntry.ticketId &&
+              mostRecentLiveId === expandedEntry.id && (
+                <div className="feedback-bar">
+                  {expandedEntry.feedbackSubmitted ? (
+                    <div className="feedback-submitted-row">
+                      <span
+                        className={`feedback-confirmed feedback-${expandedEntry.feedbackStatus}`}
+                      >
+                        {expandedEntry.feedbackStatus === "resolved"
+                          ? "✓ Resolved"
+                          : expandedEntry.feedbackStatus === "escalated"
+                            ? "⬆️ Escalated"
+                            : "✕ Failed"}{" "}
+                        — outcome written to memory
+                      </span>
+                      {expandedEntry.reportUrl && (
+                        <a
+                          href={expandedEntry.reportUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="report-link"
+                          style={{ marginLeft: "8px" }}
+                        >
+                          📄 View Incident Report
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="feedback-prompt">
+                        <span className="feedback-pulse-dot" />
+                        <span className="feedback-prompt-text">
+                          Close the loop — select resolution outcome to write
+                          back to memory:
+                        </span>
+                      </div>
+                      <div className="feedback-buttons-row">
+                        {expandedEntry.reportUrl && (
+                          <a
+                            href={expandedEntry.reportUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="report-link"
+                            style={{ marginRight: "4px" }}
+                          >
+                            📄 View Incident Report
+                          </a>
+                        )}
+                        <button
+                          className="btn-feedback btn-feedback-resolved"
+                          onClick={() => {
+                            handleFeedback(
+                              expandedEntry.id,
+                              expandedEntry.ticketId,
+                              "resolved",
+                              expandedEntry.reportUrl,
+                            );
+                            setExpandedEntry(null);
+                          }}
+                          disabled={feedbackLoading}
+                          title="Mark this ticket as successfully resolved — outcome written to FuseBox AI Ops memory"
+                        >
+                          ✓ Resolved
+                        </button>
+                        <button
+                          className="btn-feedback btn-feedback-escalated"
+                          onClick={() => {
+                            handleFeedback(
+                              expandedEntry.id,
+                              expandedEntry.ticketId,
+                              "escalated",
+                              expandedEntry.reportUrl,
+                            );
+                            setExpandedEntry(null);
+                          }}
+                          disabled={feedbackLoading}
+                          title="Mark this ticket as escalated to a higher tier — outcome written to FuseBox AI Ops memory"
+                        >
+                          ⬆️ Escalated
+                        </button>
+                        <button
+                          className="btn-feedback btn-feedback-failed"
+                          onClick={() => {
+                            handleFeedback(
+                              expandedEntry.id,
+                              expandedEntry.ticketId,
+                              "failed",
+                              expandedEntry.reportUrl,
+                            );
+                            setExpandedEntry(null);
+                          }}
+                          disabled={feedbackLoading}
+                          title="Mark this ticket as failed to resolve — outcome written to FuseBox AI Ops memory"
+                        >
+                          ✕ Failed
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+          </div>
+        </div>
+      )}
 
       <footer className="footer">
         <span className="footer-team">Team Token Burners</span>
