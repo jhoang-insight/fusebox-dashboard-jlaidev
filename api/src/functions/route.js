@@ -267,9 +267,7 @@ async function callFuseBoxAgentWithSelfCorrection(prompt, knownIssueContext, mem
     body: JSON.stringify({ input: correctionPrompt, stream: false })
   });
 
-  if (!correctionRes.ok) {
-    return { ...firstResult, selfCorrected: false };
-  }
+  if (!correctionRes.ok) return { ...firstResult, selfCorrected: false };
 
   const correctionData = await correctionRes.json();
   const correctionText = correctionData?.output?.[0]?.content?.[0]?.text;
@@ -389,21 +387,16 @@ app.http("route", {
     const knownIssueContext = await checkKnownIssues(prompt);
     context.log("Known issue check result:", knownIssueContext);
 
-    // Step 2 — Predict complexity from KB for memory and anomaly queries
+    // Step 2 — Predict complexity from KB for memory query
     let predictedComplexity = "medium";
     if (knownIssueContext.matched) {
       const highSeverity = knownIssueContext.issues.some(i => i.severity === "high");
       predictedComplexity = highSeverity ? "complex" : "medium";
     }
 
-    // Step 3 — Query memory and check anomaly in parallel
-    const [memoryContext, anomalyResult] = await Promise.all([
-      getMemoryContext(predictedComplexity),
-      checkAnomaly(predictedComplexity)
-    ]);
-
+    // Step 3 — Query memory
+    const memoryContext = await getMemoryContext(predictedComplexity);
     context.log("Memory context:", memoryContext.length, "past tickets");
-    context.log("Anomaly check:", anomalyResult);
 
     // Step 4 — Agent classification with self-correction and 20 second timeout
     let classification;
@@ -433,7 +426,10 @@ app.http("route", {
 
     let { complexity, risk, model, reason, selfCorrected, confidence } = classification;
 
-    // Step 5 — Anomaly override — if pattern detected escalate to Kimi regardless
+    // Step 5 — Anomaly check using actual classified complexity
+    const anomalyResult = await checkAnomaly(complexity);
+    context.log("Anomaly check:", anomalyResult);
+
     let anomalyEscalated = false;
     if (anomalyResult.anomalyDetected && model !== PREMIUM_MODEL) {
       context.log("Anomaly detected — escalating to Kimi-K2.6");
@@ -442,15 +438,13 @@ app.http("route", {
       risk = "high";
       reason = `[Anomaly detected — ${anomalyResult.count} similar tickets in last ${ANOMALY_WINDOW_MINUTES} min] ${reason}`;
       anomalyEscalated = true;
-
-      // Fire anomaly alert email
       sendAlertEmail(
         "INCIDENT ALERT: FuseBox Anomaly Detected",
         `FuseBox has detected a potential widespread incident.\n\n${anomalyResult.count} similar ${complexity} tickets submitted in the last ${ANOMALY_WINDOW_MINUTES} minutes.\n\nLatest ticket: ${prompt}\n\nAutomatically escalated to Kimi-K2.6 for advanced triage.\n\nReview the FuseBox dashboard immediately.`
       ).catch(e => console.error("Anomaly alert email failed:", e.message));
     }
 
-    // Step 6 — Confidence escalation — if below threshold escalate to next tier
+    // Step 6 — Confidence escalation
     let confidenceEscalated = false;
     if (confidence < CONFIDENCE_THRESHOLD && !anomalyEscalated) {
       if (model === CHEAP_MODEL) {
