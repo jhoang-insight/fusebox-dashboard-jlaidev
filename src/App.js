@@ -1,369 +1,12 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
 
 const DEMO_PASSWORD = "TokenBurners2026";
-
-const PROMPTS = [
-  {
-    text: "User cannot log into their laptop. Password reset needed.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "Printer on floor 3 is offline. No one near it can print.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "User requesting access to the shared marketing drive.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "New employee needs M365 account created and email set up.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "User's second monitor is not being detected by their laptop.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "Outlook email signature is missing for one user after a profile update.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "User's laptop is running very slowly. Requesting performance check.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "Webcam not detected during Teams calls on one user's machine.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "User account locked out after too many failed login attempts.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "VPN client needs to be installed on a remote worker's new laptop.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "Outlook not opening for one user. Profile may be corrupted.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "User needs Zoom installed on their workstation.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "Corporate email not set up on a single user's iPhone.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "User forgot their PIN for Windows Hello and cannot log in.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "Keyboard not responding on one user's desktop. Replacement requested.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "User needs read access to a specific SharePoint document library.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "Single user's OneDrive is showing a sync error on one file.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "User requesting a software license for Adobe Acrobat.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "Offboarding request — disable account and revoke access for departing employee.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "User cannot connect to the office Wi-Fi on their personal laptop.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "Teams status stuck on Away for one user even when they are active.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "User needs their display resolution changed after monitor replacement.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "Single user cannot open PDF files. Adobe Reader not installed.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "User's MFA authenticator app was lost with their old phone. Need re-enrollment.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "User requesting a distribution list be created for their project team.",
-    complexity: "simple",
-    model: "phi-4-mini",
-    costPer1k: 0.0001,
-    risk: "low",
-  },
-  {
-    text: "Outlook not syncing emails for the entire sales team since this morning. VPN is connected.",
-    complexity: "medium",
-    model: "DeepSeek-V4-Flash",
-    costPer1k: 0.0014,
-    risk: "medium",
-  },
-  {
-    text: "Teams calls dropping every 20 minutes for multiple users after last week's Windows update.",
-    complexity: "medium",
-    model: "DeepSeek-V4-Flash",
-    costPer1k: 0.0014,
-    risk: "medium",
-  },
-  {
-    text: "SharePoint permissions broken for three users after an admin made changes yesterday.",
-    complexity: "medium",
-    model: "DeepSeek-V4-Flash",
-    costPer1k: 0.0014,
-    risk: "medium",
-  },
-  {
-    text: "VPN is dropping connections for all remote workers in the Chicago office. Local users unaffected.",
-    complexity: "medium",
-    model: "DeepSeek-V4-Flash",
-    costPer1k: 0.0014,
-    risk: "medium",
-  },
-  {
-    text: "The CRM application is returning errors for the entire customer support department.",
-    complexity: "medium",
-    model: "DeepSeek-V4-Flash",
-    costPer1k: 0.0014,
-    risk: "medium",
-  },
-  {
-    text: "OneDrive sync failing for multiple users in the finance team. Files not uploading.",
-    complexity: "medium",
-    model: "DeepSeek-V4-Flash",
-    costPer1k: 0.0014,
-    risk: "medium",
-  },
-  {
-    text: "Several users are being repeatedly prompted for MFA every hour despite successful authentication.",
-    complexity: "medium",
-    model: "DeepSeek-V4-Flash",
-    costPer1k: 0.0014,
-    risk: "medium",
-  },
-  {
-    text: "The shared HR mailbox is inaccessible to all HR staff following a license change.",
-    complexity: "medium",
-    model: "DeepSeek-V4-Flash",
-    costPer1k: 0.0014,
-    risk: "medium",
-  },
-  {
-    text: "Multiple devices in the marketing department are showing as non-compliant in Intune after a policy update.",
-    complexity: "medium",
-    model: "DeepSeek-V4-Flash",
-    costPer1k: 0.0014,
-    risk: "medium",
-  },
-  {
-    text: "All printers on the second floor are offline. Print server may be down.",
-    complexity: "medium",
-    model: "DeepSeek-V4-Flash",
-    costPer1k: 0.0014,
-    risk: "medium",
-  },
-  {
-    text: "Network is slow for everyone in the Austin office. Remote workers are unaffected.",
-    complexity: "medium",
-    model: "DeepSeek-V4-Flash",
-    costPer1k: 0.0014,
-    risk: "medium",
-  },
-  {
-    text: "Azure Virtual Desktop sessions are slow and disconnecting for a group of five users.",
-    complexity: "medium",
-    model: "DeepSeek-V4-Flash",
-    costPer1k: 0.0014,
-    risk: "medium",
-  },
-  {
-    text: "A user is having issues with a critical business application the whole department relies on. Started this morning.",
-    complexity: "medium",
-    model: "DeepSeek-V4-Flash",
-    costPer1k: 0.0014,
-    risk: "medium",
-  },
-  {
-    text: "Teams meeting recordings are not appearing in SharePoint for any user in the engineering team.",
-    complexity: "medium",
-    model: "DeepSeek-V4-Flash",
-    costPer1k: 0.0014,
-    risk: "medium",
-  },
-  {
-    text: "Conditional Access is prompting for device compliance for a group of remote workers who were previously unaffected.",
-    complexity: "medium",
-    model: "DeepSeek-V4-Flash",
-    costPer1k: 0.0014,
-    risk: "medium",
-  },
-  {
-    text: "47 users cannot access Azure Virtual Desktop across three sites. Host pool appears down.",
-    complexity: "complex",
-    model: "Kimi-K2.6",
-    costPer1k: 0.007,
-    risk: "high",
-  },
-  {
-    text: "Conditional Access policy is blocking all MFA accounts from signing into M365. Tenant-wide lockout.",
-    complexity: "complex",
-    model: "Kimi-K2.6",
-    costPer1k: 0.007,
-    risk: "high",
-  },
-  {
-    text: "Azure AD Connect sync has stopped. On-premises password changes are not replicating to Azure AD.",
-    complexity: "complex",
-    model: "Kimi-K2.6",
-    costPer1k: 0.007,
-    risk: "high",
-  },
-  {
-    text: "Active ransomware attack detected. Files are being encrypted across multiple servers. Immediate containment needed.",
-    complexity: "complex",
-    model: "Kimi-K2.6",
-    costPer1k: 0.007,
-    risk: "high",
-  },
-  {
-    text: "No one in the organization can send or receive email. Exchange Online mail flow has completely stopped.",
-    complexity: "complex",
-    model: "Kimi-K2.6",
-    costPer1k: 0.007,
-    risk: "high",
-  },
-  {
-    text: "Global Admin account shows suspicious sign-ins from foreign IP addresses. Possible credential compromise.",
-    complexity: "complex",
-    model: "Kimi-K2.6",
-    costPer1k: 0.007,
-    risk: "high",
-  },
-  {
-    text: "Domain controller failure is preventing all on-premises users from authenticating. Entire organization affected.",
-    complexity: "complex",
-    model: "Kimi-K2.6",
-    costPer1k: 0.007,
-    risk: "high",
-  },
-  {
-    text: "Coordinated phishing campaign targeting all employees. Multiple users have clicked malicious links and entered credentials.",
-    complexity: "complex",
-    model: "Kimi-K2.6",
-    costPer1k: 0.007,
-    risk: "high",
-  },
-  {
-    text: "WAN failure is causing connectivity loss across four office locations simultaneously. All sites offline.",
-    complexity: "complex",
-    model: "Kimi-K2.6",
-    costPer1k: 0.007,
-    risk: "high",
-  },
-  {
-    text: "Azure subscription quota exceeded. New resource deployments failing across all teams. Existing services at risk of scaling failure.",
-    complexity: "complex",
-    model: "Kimi-K2.6",
-    costPer1k: 0.007,
-    risk: "high",
-  },
-];
 
 const BUDGET_LIMIT = 0.014;
 const ALERT_THRESHOLD = 0.0008;
 const PREMIUM_MODEL_COST = 0.007;
 const ANNUAL_TICKET_VOLUME = 50000;
-
-function getTokenCount(text) {
-  return Math.floor(text.length / 4);
-}
 
 function getCost(tokens, costPer1k) {
   return (tokens / 1000) * costPer1k;
@@ -460,7 +103,6 @@ function App() {
   const [totalSavings, setTotalSavings] = useState(0);
   const [alertActive, setAlertActive] = useState(false);
   const [budgetExceeded, setBudgetExceeded] = useState(false);
-  const [running, setRunning] = useState(false);
   const [cheapCount, setCheapCount] = useState(0);
   const [midCount, setMidCount] = useState(0);
   const [premiumCount, setPremiumCount] = useState(0);
@@ -476,7 +118,6 @@ function App() {
   const [anomalyCount, setAnomalyCount] = useState(0);
   const [incidentRecords, setIncidentRecords] = useState([]);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
-  const intervalRef = useRef(null);
 
   useEffect(() => {
     document.title = "FuseBox AI Ops";
@@ -513,69 +154,12 @@ function App() {
     }
   }, [alertActive, budgetExceeded, emailSent, totalCost, log]);
 
-  useEffect(() => {
-    if (!running) return;
-    let index = 0;
-    let shuffled = [...PROMPTS].sort(() => Math.random() - 0.5);
-    intervalRef.current = setInterval(() => {
-      if (index >= shuffled.length) {
-        index = 0;
-        shuffled = [...PROMPTS].sort(() => Math.random() - 0.5);
-      }
-      const prompt = shuffled[index];
-      const tokens = getTokenCount(prompt.text);
-      const cost = getCost(tokens, prompt.costPer1k);
-      const premiumCostVal = getCost(tokens, PREMIUM_MODEL_COST);
-      const savings = premiumCostVal - cost;
-      setLog((prev) => {
-        const newEntry = {
-          id: Date.now(),
-          timestamp: new Date().toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: true,
-          }),
-          prompt: prompt.text,
-          complexity: prompt.complexity,
-          model: prompt.model,
-          risk: prompt.risk,
-          tokens,
-          cost: cost.toFixed(6),
-          savings: savings > 0 ? savings.toFixed(6) : "N/A",
-          live: false,
-          aiResponse: null,
-          reason: null,
-        };
-        return [newEntry, ...prev].slice(0, 20);
-      });
-      setTotalCost((prev) => {
-        const newTotal = prev + cost;
-        if (newTotal >= ALERT_THRESHOLD) setAlertActive(true);
-        if (newTotal >= BUDGET_LIMIT) setBudgetExceeded(true);
-        return newTotal;
-      });
-      setTotalSavings((prev) => prev + (savings > 0 ? savings : 0));
-      if (prompt.model === "phi-4-mini") {
-        setCheapCount((prev) => prev + 1);
-      } else if (prompt.model === "DeepSeek-V4-Flash") {
-        setMidCount((prev) => prev + 1);
-      } else {
-        setPremiumCount((prev) => prev + 1);
-      }
-      index++;
-    }, 3000);
-    return () => clearInterval(intervalRef.current);
-  }, [running]);
-
   const handleReset = () => {
-    clearInterval(intervalRef.current);
     setLog([]);
     setTotalCost(0);
     setTotalSavings(0);
     setAlertActive(false);
     setBudgetExceeded(false);
-    setRunning(false);
     setCheapCount(0);
     setMidCount(0);
     setPremiumCount(0);
@@ -846,22 +430,8 @@ function App() {
         )}
 
         <div className="controls">
-          <button
-            className="btn-primary"
-            onClick={() => setRunning(true)}
-            disabled={running}
-          >
-            Run Demo
-          </button>
-          <button
-            className="btn-pause"
-            onClick={() => setRunning(false)}
-            disabled={!running}
-          >
-            Pause
-          </button>
           <button className="btn-secondary" onClick={handleReset}>
-            Reset
+            Reset Session
           </button>
         </div>
 
@@ -869,7 +439,7 @@ function App() {
           <input
             className="live-input"
             type="text"
-            placeholder="Enter a ticket to route live..."
+            placeholder="Enter an IT support ticket to route live..."
             value={livePrompt}
             onChange={(e) => setLivePrompt(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleLiveSubmit()}
@@ -879,7 +449,7 @@ function App() {
             onClick={handleLiveSubmit}
             disabled={liveLoading}
           >
-            {liveLoading ? "Routing..." : "Submit Live"}
+            {liveLoading ? "Routing..." : "Submit"}
           </button>
         </div>
 
@@ -920,16 +490,14 @@ function App() {
       <div className="main-layout">
         <div className="cards-panel">
           {log.length === 0 && (
-            <p className="empty-state">
-              Press Run Demo or submit a live ticket to begin
-            </p>
+            <p className="empty-state">Submit a live ticket to begin</p>
           )}
           <div className="log-list">
             {log.map((entry) => (
               <div key={entry.id} className={`log-entry ${entry.complexity}`}>
                 <div className="log-header">
                   <span className="log-time">{entry.timestamp}</span>
-                  {entry.live && <span className="badge live-badge">LIVE</span>}
+                  <span className="badge live-badge">LIVE</span>
                   <span
                     className={`badge ${entry.model === "phi-4-mini" ? "badge-cheap" : entry.model === "DeepSeek-V4-Flash" ? "badge-mid" : "badge-expensive"}`}
                   >
@@ -996,7 +564,7 @@ function App() {
                       className="correction-badge"
                       title="The agent detected uncertainty in its first classification and re-evaluated to produce a higher confidence decision"
                     >
-                      Self-corrected
+                      🔄 Self-corrected
                     </span>
                   )}
                   {entry.anomalyDetected && (
@@ -1004,7 +572,7 @@ function App() {
                       className="anomaly-badge"
                       title="FuseBox AI Ops detected a pattern spike and autonomously escalated this ticket and generated an incident report"
                     >
-                      Anomaly — {entry.anomalyCount} similar tickets
+                      🚨 Anomaly — {entry.anomalyCount} similar tickets
                     </span>
                   )}
                   {entry.confidenceEscalated && (
@@ -1012,7 +580,7 @@ function App() {
                       className="correction-badge"
                       title="Confidence score was below threshold — ticket was automatically escalated to a more capable model"
                     >
-                      Confidence escalated
+                      ⬆️ Confidence escalated
                     </span>
                   )}
                   {entry.auditorResult && (
@@ -1041,105 +609,103 @@ function App() {
                     </a>
                   )}
                 </div>
-                {entry.live &&
-                  entry.ticketId &&
-                  mostRecentLiveId === entry.id && (
-                    <div className="feedback-bar">
-                      {entry.feedbackSubmitted ? (
-                        <div className="feedback-submitted-row">
-                          <span
-                            className={`feedback-confirmed feedback-${entry.feedbackStatus}`}
+                {entry.ticketId && mostRecentLiveId === entry.id && (
+                  <div className="feedback-bar">
+                    {entry.feedbackSubmitted ? (
+                      <div className="feedback-submitted-row">
+                        <span
+                          className={`feedback-confirmed feedback-${entry.feedbackStatus}`}
+                        >
+                          {entry.feedbackStatus === "resolved"
+                            ? "✓ Resolved"
+                            : entry.feedbackStatus === "escalated"
+                              ? "⬆️ Escalated"
+                              : "✕ Failed"}{" "}
+                          — outcome written to memory
+                        </span>
+                        {entry.reportUrl && (
+                          <a
+                            href={entry.reportUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="report-link"
+                            style={{ marginLeft: "8px" }}
                           >
-                            {entry.feedbackStatus === "resolved"
-                              ? "✓ Resolved"
-                              : entry.feedbackStatus === "escalated"
-                                ? "Escalated"
-                                : "✕ Failed"}{" "}
-                            — outcome written to memory
+                            📄 View Incident Report
+                          </a>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <div className="feedback-prompt">
+                          <span className="feedback-pulse-dot" />
+                          <span className="feedback-prompt-text">
+                            Close the loop — select resolution outcome to write
+                            back to memory:
                           </span>
+                        </div>
+                        <div className="feedback-buttons-row">
                           {entry.reportUrl && (
                             <a
                               href={entry.reportUrl}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="report-link"
-                              style={{ marginLeft: "8px" }}
+                              style={{ marginRight: "4px" }}
                             >
                               📄 View Incident Report
                             </a>
                           )}
+                          <button
+                            className="btn-feedback btn-feedback-resolved"
+                            onClick={() =>
+                              handleFeedback(
+                                entry.id,
+                                entry.ticketId,
+                                "resolved",
+                                entry.reportUrl,
+                              )
+                            }
+                            disabled={feedbackLoading}
+                            title="Mark this ticket as successfully resolved — outcome written to FuseBox AI Ops memory"
+                          >
+                            ✓ Resolved
+                          </button>
+                          <button
+                            className="btn-feedback btn-feedback-escalated"
+                            onClick={() =>
+                              handleFeedback(
+                                entry.id,
+                                entry.ticketId,
+                                "escalated",
+                                entry.reportUrl,
+                              )
+                            }
+                            disabled={feedbackLoading}
+                            title="Mark this ticket as escalated to a higher tier — outcome written to FuseBox AI Ops memory"
+                          >
+                            ⬆️ Escalated
+                          </button>
+                          <button
+                            className="btn-feedback btn-feedback-failed"
+                            onClick={() =>
+                              handleFeedback(
+                                entry.id,
+                                entry.ticketId,
+                                "failed",
+                                entry.reportUrl,
+                              )
+                            }
+                            disabled={feedbackLoading}
+                            title="Mark this ticket as failed to resolve — outcome written to FuseBox AI Ops memory"
+                          >
+                            ✕ Failed
+                          </button>
                         </div>
-                      ) : (
-                        <>
-                          <div className="feedback-prompt">
-                            <span className="feedback-pulse-dot" />
-                            <span className="feedback-prompt-text">
-                              Close the loop — select resolution outcome to
-                              write back to memory:
-                            </span>
-                          </div>
-                          <div className="feedback-buttons-row">
-                            {entry.reportUrl && (
-                              <a
-                                href={entry.reportUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="report-link"
-                                style={{ marginRight: "4px" }}
-                              >
-                                📄 View Incident Report
-                              </a>
-                            )}
-                            <button
-                              className="btn-feedback btn-feedback-resolved"
-                              onClick={() =>
-                                handleFeedback(
-                                  entry.id,
-                                  entry.ticketId,
-                                  "resolved",
-                                  entry.reportUrl,
-                                )
-                              }
-                              disabled={feedbackLoading}
-                              title="Mark this ticket as successfully resolved — outcome written to FuseBox AI Ops memory"
-                            >
-                              ✓ Resolved
-                            </button>
-                            <button
-                              className="btn-feedback btn-feedback-escalated"
-                              onClick={() =>
-                                handleFeedback(
-                                  entry.id,
-                                  entry.ticketId,
-                                  "escalated",
-                                  entry.reportUrl,
-                                )
-                              }
-                              disabled={feedbackLoading}
-                              title="Mark this ticket as escalated to a higher tier — outcome written to FuseBox AI Ops memory"
-                            >
-                              Escalated
-                            </button>
-                            <button
-                              className="btn-feedback btn-feedback-failed"
-                              onClick={() =>
-                                handleFeedback(
-                                  entry.id,
-                                  entry.ticketId,
-                                  "failed",
-                                  entry.reportUrl,
-                                )
-                              }
-                              disabled={feedbackLoading}
-                              title="Mark this ticket as failed to resolve — outcome written to FuseBox AI Ops memory"
-                            >
-                              ✕ Failed
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
