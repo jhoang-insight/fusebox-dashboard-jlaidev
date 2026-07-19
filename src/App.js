@@ -4,17 +4,63 @@ import './App.css';
 const DEMO_PASSWORD = 'TokenBurners2026';
 
 const PROMPTS = [
+  // ── SIMPLE (25) — phi-4-mini ──────────────────────────────────────────────
   { text: "User cannot log into their laptop. Password reset needed.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
-  { text: "Printer on floor 3 is offline. No one can print.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "Printer on floor 3 is offline. No one near it can print.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
   { text: "User requesting access to the shared marketing drive.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
-  { text: "Outlook not syncing emails since this morning. VPN is connected.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
-  { text: "Teams calls dropping every 20 minutes after Windows update.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
-  { text: "SharePoint permissions broken after admin changes. Three users affected.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
-  { text: "47 users cannot access Azure Virtual Desktop across three sites.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
-  { text: "Conditional Access policy blocking all MFA accounts from M365. Tenant-wide.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
-  { text: "Azure AD Connect sync failing after domain controller migration.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
-  { text: "A user is having some issues with a critical business application the whole company relies on. It started this morning and they are not sure what changed.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
+  { text: "New employee needs M365 account created and email set up.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "User's second monitor is not being detected by their laptop.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "Outlook email signature is missing for one user after a profile update.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "User's laptop is running very slowly. Requesting performance check.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "Webcam not detected during Teams calls on one user's machine.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "User account locked out after too many failed login attempts.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "VPN client needs to be installed on a remote worker's new laptop.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "Outlook not opening for one user. Profile may be corrupted.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "User needs Zoom installed on their workstation.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "Corporate email not set up on a single user's iPhone.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "User forgot their PIN for Windows Hello and cannot log in.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "Keyboard not responding on one user's desktop. Replacement requested.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "User needs read access to a specific SharePoint document library.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "Single user's OneDrive is showing a sync error on one file.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "User requesting a software license for Adobe Acrobat.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "Offboarding request — disable account and revoke access for departing employee.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "User cannot connect to the office Wi-Fi on their personal laptop.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "Teams status stuck on Away for one user even when they are active.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "User needs their display resolution changed after monitor replacement.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "Single user cannot open PDF files. Adobe Reader not installed.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "User's MFA authenticator app was lost with their old phone. Need re-enrollment.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+  { text: "User requesting a distribution list be created for their project team.", complexity: "simple", model: "phi-4-mini", costPer1k: 0.0001, risk: "low" },
+
+  // ── MEDIUM (15) — DeepSeek-V4-Flash ──────────────────────────────────────
+  { text: "Outlook not syncing emails for the entire sales team since this morning. VPN is connected.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
+  { text: "Teams calls dropping every 20 minutes for multiple users after last week's Windows update.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
+  { text: "SharePoint permissions broken for three users after an admin made changes yesterday.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
+  { text: "VPN is dropping connections for all remote workers in the Chicago office. Local users unaffected.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
+  { text: "The CRM application is returning errors for the entire customer support department.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
+  { text: "OneDrive sync failing for multiple users in the finance team. Files not uploading.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
+  { text: "Several users are being repeatedly prompted for MFA every hour despite successful authentication.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
+  { text: "The shared HR mailbox is inaccessible to all HR staff following a license change.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
+  { text: "Multiple devices in the marketing department are showing as non-compliant in Intune after a policy update.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
+  { text: "All printers on the second floor are offline. Print server may be down.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
+  { text: "Network is slow for everyone in the Austin office. Remote workers are unaffected.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
+  { text: "Azure Virtual Desktop sessions are slow and disconnecting for a group of five users.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
+  { text: "A user is having issues with a critical business application the whole department relies on. Started this morning.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
+  { text: "Teams meeting recordings are not appearing in SharePoint for any user in the engineering team.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
+  { text: "Conditional Access is prompting for device compliance for a group of remote workers who were previously unaffected.", complexity: "medium", model: "DeepSeek-V4-Flash", costPer1k: 0.0014, risk: "medium" },
+
+  // ── COMPLEX (10) — Kimi-K2.6 ─────────────────────────────────────────────
+  { text: "47 users cannot access Azure Virtual Desktop across three sites. Host pool appears down.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
+  { text: "Conditional Access policy is blocking all MFA accounts from signing into M365. Tenant-wide lockout.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
+  { text: "Azure AD Connect sync has stopped. On-premises password changes are not replicating to Azure AD.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
+  { text: "Active ransomware attack detected. Files are being encrypted across multiple servers. Immediate containment needed.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
+  { text: "No one in the organization can send or receive email. Exchange Online mail flow has completely stopped.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
+  { text: "Global Admin account shows suspicious sign-ins from foreign IP addresses. Possible credential compromise.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
+  { text: "Domain controller failure is preventing all on-premises users from authenticating. Entire organization affected.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
+  { text: "Coordinated phishing campaign targeting all employees. Multiple users have clicked malicious links and entered credentials.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
+  { text: "WAN failure is causing connectivity loss across four office locations simultaneously. All sites offline.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
+  { text: "Azure subscription quota exceeded. New resource deployments failing across all teams. Existing services at risk of scaling failure.", complexity: "complex", model: "Kimi-K2.6", costPer1k: 0.007, risk: "high" },
 ];
+
 
 const BUDGET_LIMIT = 0.001;
 const ALERT_THRESHOLD = 0.0003;
@@ -192,7 +238,7 @@ function App() {
         setPremiumCount(prev => prev + 1);
       }
       index++;
-    }, 1500);
+    }, 3000);
     return () => clearInterval(intervalRef.current);
   }, [running]);
 
