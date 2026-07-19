@@ -19,6 +19,7 @@ const PROMPTS = [
 const BUDGET_LIMIT = 0.001;
 const ALERT_THRESHOLD = 0.0003;
 const PREMIUM_MODEL_COST = 0.007;
+const ANNUAL_TICKET_VOLUME = 50000;
 
 function getTokenCount(text) {
   return Math.floor(text.length / 4);
@@ -31,6 +32,11 @@ function getCost(tokens, costPer1k) {
 function formatCost(value) {
   if (value === 0) return '$0.000000';
   return '$' + value.toFixed(6);
+}
+
+function formatAnnual(value) {
+  if (value >= 1000) return '$' + (value / 1000).toFixed(1) + 'K';
+  return '$' + value.toFixed(2);
 }
 
 function generateCSV(log, totalCost, totalSavings, cheapCount, midCount, premiumCount) {
@@ -95,9 +101,6 @@ function App() {
   const [cheapCount, setCheapCount] = useState(0);
   const [midCount, setMidCount] = useState(0);
   const [premiumCount, setPremiumCount] = useState(0);
-  const [cheapCost, setCheapCost] = useState(0);
-  const [midCost, setMidCost] = useState(0);
-  const [premiumCost, setPremiumCost] = useState(0);
   const [livePrompt, setLivePrompt] = useState('');
   const [liveLoading, setLiveLoading] = useState(false);
   const [emailSent, setEmailSent] = useState({ threshold: false, exceeded: false });
@@ -105,6 +108,7 @@ function App() {
   const [memoryHitCount, setMemoryHitCount] = useState(0);
   const [auditorOverrideCount, setAuditorOverrideCount] = useState(0);
   const [anomalyCount, setAnomalyCount] = useState(0);
+  const [incidentRecords, setIncidentRecords] = useState([]);
   const intervalRef = useRef(null);
 
   useEffect(() => {
@@ -182,13 +186,10 @@ function App() {
       setTotalSavings(prev => prev + (savings > 0 ? savings : 0));
       if (prompt.model === 'phi-4-mini') {
         setCheapCount(prev => prev + 1);
-        setCheapCost(prev => prev + cost);
       } else if (prompt.model === 'DeepSeek-V4-Flash') {
         setMidCount(prev => prev + 1);
-        setMidCost(prev => prev + cost);
       } else {
         setPremiumCount(prev => prev + 1);
-        setPremiumCost(prev => prev + cost);
       }
       index++;
     }, 1500);
@@ -206,15 +207,13 @@ function App() {
     setCheapCount(0);
     setMidCount(0);
     setPremiumCount(0);
-    setCheapCost(0);
-    setMidCost(0);
-    setPremiumCost(0);
     setLivePrompt('');
     setEmailSent({ threshold: false, exceeded: false });
     setSelfCorrectionCount(0);
     setMemoryHitCount(0);
     setAuditorOverrideCount(0);
     setAnomalyCount(0);
+    setIncidentRecords([]);
   };
 
   const handleUnlock = () => {
@@ -241,7 +240,20 @@ function App() {
       if (data.selfCorrected) setSelfCorrectionCount(prev => prev + 1);
       if (data.memoryUsed && data.memoryUsed !== 'No memory context yet') setMemoryHitCount(prev => prev + 1);
       if (data.auditorOverride) setAuditorOverrideCount(prev => prev + 1);
-      if (data.anomalyDetected) setAnomalyCount(prev => prev + 1);
+      if (data.anomalyDetected) {
+        setAnomalyCount(prev => prev + 1);
+        const incidentId = 'INC-' + Date.now().toString().slice(-6);
+        const newIncident = {
+          id: incidentId,
+          timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
+          prompt: livePrompt,
+          complexity: data.complexity,
+          model: data.model,
+          anomalyCount: data.anomalyCount,
+          priority: data.complexity === 'complex' ? 'P1' : data.complexity === 'medium' ? 'P2' : 'P3',
+        };
+        setIncidentRecords(prev => [newIncident, ...prev].slice(0, 5));
+      }
       setLog(prev => {
         const newEntry = {
           id: Date.now(),
@@ -277,13 +289,10 @@ function App() {
       setTotalSavings(prev => prev + (data.savings !== 'N/A' ? parseFloat(data.savings) : 0));
       if (data.model === 'phi-4-mini') {
         setCheapCount(prev => prev + 1);
-        setCheapCost(prev => prev + parseFloat(data.cost));
       } else if (data.model === 'DeepSeek-V4-Flash') {
         setMidCount(prev => prev + 1);
-        setMidCost(prev => prev + parseFloat(data.cost));
       } else {
         setPremiumCount(prev => prev + 1);
-        setPremiumCost(prev => prev + parseFloat(data.cost));
       }
       setLivePrompt('');
     } catch (e) {
@@ -297,6 +306,7 @@ function App() {
   const costReduction = (totalCost + totalSavings) > 0 ? ((totalSavings / (totalCost + totalSavings)) * 100).toFixed(1) : 0;
   const budgetPct = Math.min((totalCost / BUDGET_LIMIT) * 100, 100).toFixed(0);
   const liveCount = log.filter(e => e.live).length;
+  const annualSavings = totalProcessed > 0 ? (totalSavings / totalProcessed) * ANNUAL_TICKET_VOLUME : 0;
 
   if (!unlocked) {
     return (
@@ -498,6 +508,28 @@ function App() {
             </div>
           </div>
 
+          {totalProcessed > 0 && (
+            <div className="sidebar-card annual-card">
+              <div className="sidebar-card-title">Enterprise Projection</div>
+              <div className="annual-savings-block">
+                <span className="annual-savings-value">{formatAnnual(annualSavings)}</span>
+                <span className="annual-savings-label">projected annual savings</span>
+                <span className="annual-savings-sub">based on {ANNUAL_TICKET_VOLUME.toLocaleString()} tickets/year at current routing efficiency</span>
+              </div>
+              <div className="annual-divider" />
+              <div className="annual-compare">
+                <div className="annual-compare-row">
+                  <span className="annual-compare-label">Without FuseBox</span>
+                  <span className="annual-compare-val baseline-val">{formatAnnual((totalCost + totalSavings) / totalProcessed * ANNUAL_TICKET_VOLUME)}</span>
+                </div>
+                <div className="annual-compare-row">
+                  <span className="annual-compare-label">With FuseBox</span>
+                  <span className="annual-compare-val green-val">{formatAnnual(totalCost / totalProcessed * ANNUAL_TICKET_VOLUME)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="sidebar-card">
             <div className="sidebar-card-title">Model Distribution</div>
             <div className="model-dist">
@@ -572,6 +604,25 @@ function App() {
               </div>
             </div>
           </div>
+
+          {incidentRecords.length > 0 && (
+            <div className="sidebar-card">
+              <div className="sidebar-card-title">Auto-Created Incident Records</div>
+              <div className="incident-list">
+                {incidentRecords.map(inc => (
+                  <div key={inc.id} className="incident-row">
+                    <div className="incident-header">
+                      <span className="incident-id">{inc.id}</span>
+                      <span className={`incident-priority priority-${inc.priority.toLowerCase()}`}>{inc.priority}</span>
+                      <span className="incident-time">{inc.timestamp}</span>
+                    </div>
+                    <p className="incident-prompt">{inc.prompt.slice(0, 60)}{inc.prompt.length > 60 ? '...' : ''}</p>
+                    <p className="incident-meta">{inc.anomalyCount} similar tickets detected — auto-escalated to {inc.model}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="sidebar-card">
             <div className="sidebar-card-title">System Status</div>
