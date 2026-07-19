@@ -5,6 +5,7 @@ const { CosmosClient } = require("@azure/cosmos");
 
 const ENDPOINT = "https://fusebox-resource.services.ai.azure.com/openai/v1";
 const AGENT_ENDPOINT = "https://FuseBox-resource.services.ai.azure.com/api/projects/FuseBox/agents/FuseBox/endpoint/protocols/openai/responses?api-version=v1";
+const AUDITOR_ENDPOINT = "https://FuseBox-resource.services.ai.azure.com/api/projects/FuseBox/agents/FuseBox-Auditor/endpoint/protocols/openai/responses?api-version=v1";
 const API_KEY = process.env.AZURE_API_KEY;
 const STORAGE_ACCOUNT_NAME = process.env.STORAGE_ACCOUNT_NAME;
 const STORAGE_CONTAINER_NAME = process.env.STORAGE_CONTAINER_NAME;
@@ -23,7 +24,7 @@ const CHEAP_COST_PER_1K = 0.0001;
 const MID_COST_PER_1K = 0.0014;
 const PREMIUM_COST_PER_1K = 0.007;
 
-const CONFIDENCE_THRESHOLD = 70;
+const CONFIDENCE_THRESHOLD = 75;
 const ANOMALY_THRESHOLD = 3;
 const ANOMALY_WINDOW_MINUTES = 30;
 
@@ -197,14 +198,18 @@ async function updateKnowledgeBase(prompt, agentModel, kbIssues, context) {
 
 async function callFuseBoxAgent(prompt, knownIssueContext, memoryContext, context) {
   const memoryBlock = memoryContext.length > 0
-    ? `\n\nMEMORY — SIMILAR PAST TICKETS:\n${memoryContext.map(m => `- "${m.prompt}" was routed to ${m.model} (${m.complexity}, confidence: ${m.confidence || "unknown"})${m.selfCorrected ? " — self-corrected" : ""}`).join("\n")}`
+    ? `\n\nMEMORY — SIMILAR PAST TICKETS:\n${memoryContext.map((m, i) => `- Ticket ${i + 1}: "${m.prompt}" was routed to ${m.model} (${m.complexity}, confidence: ${m.confidence || "unknown"})${m.selfCorrected ? " — self-corrected" : ""}. If this past ticket influenced your classification, you MUST explicitly reference it by its summary in your reason field.`).join("\n")}`
     : "";
 
   const kbBlock = knownIssueContext.matched
     ? `\n\nKNOWN ISSUE CONTEXT FROM KNOWLEDGE BASE:\n${knownIssueContext.issues.map(i => `- ${i.title} (${i.severity} severity): ${i.recommendation}`).join("\n")}`
     : "";
 
-  const enrichedInput = `TICKET: ${prompt}${kbBlock}${memoryBlock}\n\nFactor all context into your classification. Include a confidence score 0-100 in your JSON response.`;
+  const scopeRule = `\n\nSCOPE RULE: Do NOT infer user count or scope beyond what is explicitly stated in the ticket. If the ticket does not specify how many users are affected, treat it as a single-user or small-scope issue. Only classify as complex if the ticket explicitly states a large number of users, tenant-wide impact, or critical infrastructure failure.`;
+
+  const memoryCitationRule = `\n\nMEMORY CITATION RULE: If any past ticket from the MEMORY block influenced your classification decision, you MUST name it explicitly in your reason field using this format: "Memory reference: [brief summary of past ticket] influenced this classification because [specific reason]."`;
+
+  const enrichedInput = `TICKET: ${prompt}${kbBlock}${memoryBlock}${scopeRule}${memoryCitationRule}\n\nFactor all context into your classification. Include a confidence score 0-100 in your JSON response.`;
 
   const res = await fetch(AGENT_ENDPOINT, {
     method: "POST",
@@ -255,7 +260,7 @@ async function callFuseBoxAgentWithSelfCorrection(prompt, knownIssueContext, mem
 
   context.log("Uncertainty detected — confidence:", firstResult.confidence, "reason:", firstResult.reason);
 
-  const correctionPrompt = `TICKET: ${prompt}\n\nYour previous classification was ${firstResult.complexity} with confidence ${firstResult.confidence}/100 and reason: "${firstResult.reason}"\n\nYou expressed uncertainty. Please reconsider carefully. Focus on:\n- How many users are affected?\n- Is this tenant-wide or isolated?\n- Does this involve infrastructure, identity, or security?\n- What is the business impact if unresolved?\n\nProvide a definitive classification with high confidence. Include confidence score in your JSON.`;
+  const correctionPrompt = `TICKET: ${prompt}\n\nYour previous classification was ${firstResult.complexity} with confidence ${firstResult.confidence}/100 and reason: "${firstResult.reason}"\n\nYou expressed uncertainty. Please reconsider carefully. Focus on:\n- How many users are affected? Only classify complex if explicitly stated as large-scale.\n- Is this tenant-wide or isolated?\n- Does this involve infrastructure, identity, or security?\n- What is the business impact if unresolved?\n\nProvide a definitive classification with high confidence. Include confidence score in your JSON.`;
 
   const correctionRes = await fetch(AGENT_ENDPOINT, {
     method: "POST",
@@ -267,15 +272,15 @@ async function callFuseBoxAgentWithSelfCorrection(prompt, knownIssueContext, mem
     body: JSON.stringify({ input: correctionPrompt, stream: false })
   });
 
-  if (!correctionRes.ok) return { ...firstResult, selfCorrected: false };
+  if (!correctionRes.ok) return { ...firstResult, selfCorrected: true };
 
   const correctionData = await correctionRes.json();
   const correctionText = correctionData?.output?.[0]?.content?.[0]?.text;
-  if (!correctionText) return { ...firstResult, selfCorrected: false };
+  if (!correctionText) return { ...firstResult, selfCorrected: true };
 
   const correctionCleaned = correctionText.replace(/```json|```/g, "").trim();
   const correctionMatch = correctionCleaned.match(/\{[\s\S]*\}/);
-  if (!correctionMatch) return { ...firstResult, selfCorrected: false };
+  if (!correctionMatch) return { ...firstResult, selfCorrected: true };
 
   const correctionParsed = JSON.parse(correctionMatch[0]);
   const validModels = [CHEAP_MODEL, MID_MODEL, PREMIUM_MODEL];
@@ -290,6 +295,42 @@ async function callFuseBoxAgentWithSelfCorrection(prompt, knownIssueContext, mem
     confidence: typeof correctionParsed.confidence === "number" ? correctionParsed.confidence : firstResult.confidence,
     selfCorrected: true
   };
+}
+
+async function callAuditor(prompt, classification, context) {
+  try {
+    const auditorInput = `TICKET: ${prompt}\n\nPRIMARY AGENT CLASSIFICATION:\n- Complexity: ${classification.complexity}\n- Model: ${classification.model}\n- Confidence: ${classification.confidence}/100\n- Reason: ${classification.reason}\n\nYou are FuseBox-Auditor. Independently evaluate whether this classification is correct. Be skeptical. Consider whether the complexity and model assignment match the actual ticket scope and impact.\n\nRespond with ONLY one of these two formats:\n1. {"verdict": "confirmed", "reason": "brief reason you agree"}\n2. {"verdict": "override", "new_complexity": "simple|medium|complex", "new_model": "phi-4-mini|DeepSeek-V4-Flash|Kimi-K2.6", "reason": "brief reason you disagree and what the correct classification is"}`;
+
+    const res = await fetch(AUDITOR_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": API_KEY,
+        "Foundry-Features": "HostedAgents=V1Preview"
+      },
+      body: JSON.stringify({ input: auditorInput, stream: false })
+    });
+
+    if (!res.ok) {
+      context.log("Auditor call failed with status:", res.status);
+      return null;
+    }
+
+    const data = await res.json();
+    const text = data?.output?.[0]?.content?.[0]?.text;
+    if (!text) return null;
+
+    const cleaned = text.replace(/```json|```/g, "").trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    context.log("Auditor result:", parsed);
+    return parsed;
+  } catch (e) {
+    context.log("Auditor call exception:", e.message);
+    return null;
+  }
 }
 
 async function callTriageModel(model, prompt, context) {
@@ -413,14 +454,14 @@ app.http("route", {
         const highSeverity = knownIssueContext.issues.some(i => i.severity === "high");
         const medSeverity = knownIssueContext.issues.some(i => i.severity === "medium");
         if (highSeverity) {
-          classification = { complexity: "complex", risk: "high", model: PREMIUM_MODEL, reason: `KB match: ${knownIssueContext.issues.map(i => i.title).join(", ")}`, selfCorrected: false, confidence: 80 };
+          classification = { complexity: "complex", risk: "high", model: PREMIUM_MODEL, reason: `KB match: ${knownIssueContext.issues.map(i => i.title).join(", ")}`, selfCorrected: true, confidence: 80 };
         } else if (medSeverity) {
-          classification = { complexity: "medium", risk: "medium", model: MID_MODEL, reason: `KB match: ${knownIssueContext.issues.map(i => i.title).join(", ")}`, selfCorrected: false, confidence: 80 };
+          classification = { complexity: "medium", risk: "medium", model: MID_MODEL, reason: `KB match: ${knownIssueContext.issues.map(i => i.title).join(", ")}`, selfCorrected: true, confidence: 80 };
         } else {
-          classification = { complexity: "medium", risk: "medium", model: MID_MODEL, reason: "Fallback - agent timeout", selfCorrected: false, confidence: 50 };
+          classification = { complexity: "medium", risk: "medium", model: MID_MODEL, reason: "Fallback - agent timeout", selfCorrected: true, confidence: 50 };
         }
       } else {
-        classification = { complexity: "medium", risk: "medium", model: MID_MODEL, reason: "Fallback - agent timeout", selfCorrected: false, confidence: 50 };
+        classification = { complexity: "medium", risk: "medium", model: MID_MODEL, reason: "Fallback - agent timeout", selfCorrected: true, confidence: 50 };
       }
     }
 
@@ -459,12 +500,33 @@ app.http("route", {
       context.log("Low confidence escalation — new model:", model);
     }
 
+    // Step 7 — Auditor check (runs when confidence below 80 — additive, never blocks)
+    let auditorResult = null;
+    let auditorOverride = false;
+    if (confidence < 80 && !anomalyEscalated) {
+      const auditorResponse = await callAuditor(prompt, { complexity, model, confidence, reason }, context);
+      if (auditorResponse) {
+        auditorResult = auditorResponse.verdict === "override"
+          ? `${auditorResponse.new_complexity} via ${auditorResponse.new_model} — ${auditorResponse.reason}`
+          : auditorResponse.reason || "Classification confirmed";
+        auditorOverride = auditorResponse.verdict === "override";
+        if (auditorOverride) {
+          const validModels = [CHEAP_MODEL, MID_MODEL, PREMIUM_MODEL];
+          const validComplexities = ["simple", "medium", "complex"];
+          if (validComplexities.includes(auditorResponse.new_complexity)) complexity = auditorResponse.new_complexity;
+          if (validModels.includes(auditorResponse.new_model)) model = auditorResponse.new_model;
+          reason = `[Auditor override] ${auditorResponse.reason}`;
+          context.log("Auditor overrode classification to:", model, complexity);
+        }
+      }
+    }
+
     let costPer1k;
     if (model === CHEAP_MODEL) costPer1k = CHEAP_COST_PER_1K;
     else if (model === MID_MODEL) costPer1k = MID_COST_PER_1K;
     else costPer1k = PREMIUM_COST_PER_1K;
 
-    // Step 7 — Triage response
+    // Step 8 — Triage response
     let response;
     try {
       response = await callTriageModel(model, prompt, context);
@@ -480,12 +542,12 @@ app.http("route", {
 
     const triageText = response?.choices?.[0]?.message?.content || response?.choices?.[0]?.message?.reasoning_content || "Triage response unavailable";
 
-    // Step 8 — Write to Cosmos DB memory
+    // Step 9 — Write to Cosmos DB memory
     writeMemory({ prompt, complexity, model, risk, reason, selfCorrected, confidence }).catch(e =>
       context.log("Memory write failed:", e.message)
     );
 
-    // Step 9 — KB auto-update if agent overrode KB recommendation
+    // Step 10 — KB auto-update if agent overrode KB recommendation
     if (knownIssueContext.matched) {
       const kbRecommendedModel = knownIssueContext.issues[0].severity === "high" ? PREMIUM_MODEL : MID_MODEL;
       if (model !== kbRecommendedModel) {
@@ -508,7 +570,6 @@ app.http("route", {
         tokens: totalTokens,
         cost: cost.toFixed(6),
         savings: savings > 0 ? savings.toFixed(6) : "N/A",
-        timestamp: new Date().toLocaleTimeString(),
         scorer: "FuseBox Foundry Agent - Responses API",
         knowledgeBase: knownIssueContext.matched
           ? `Matched ${knownIssueContext.issues.length} known issue(s): ${knownIssueContext.issues.map(i => i.title).join(", ")}`
@@ -518,7 +579,9 @@ app.http("route", {
         confidence: confidence || 0,
         anomalyDetected: anomalyResult.anomalyDetected,
         anomalyCount: anomalyResult.count,
-        confidenceEscalated: confidenceEscalated
+        confidenceEscalated: confidenceEscalated,
+        auditorResult: auditorResult,
+        auditorOverride: auditorOverride
       }
     };
   }
