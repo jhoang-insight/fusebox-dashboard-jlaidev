@@ -104,7 +104,7 @@ function App() {
   const intervalRef = useRef(null);
 
   useEffect(() => {
-    document.title = '⚡ Project FuseBox';
+    document.title = 'Project FuseBox';
   }, []);
 
   useEffect(() => {
