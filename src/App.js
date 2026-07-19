@@ -5,12 +5,7 @@ const DEMO_PASSWORD = "TokenBurners2026";
 
 const BUDGET_LIMIT = 0.014;
 const ALERT_THRESHOLD = 0.0008;
-const PREMIUM_MODEL_COST = 0.007;
 const ANNUAL_TICKET_VOLUME = 50000;
-
-function getCost(tokens, costPer1k) {
-  return (tokens / 1000) * costPer1k;
-}
 
 function formatCost(value) {
   if (value === 0) return "$0.000000";
