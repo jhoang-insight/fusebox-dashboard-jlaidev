@@ -114,6 +114,9 @@ function App() {
   const [incidentRecords, setIncidentRecords] = useState([]);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [expandedEntry, setExpandedEntry] = useState(null);
+  const [lowRiskCount, setLowRiskCount] = useState(0);
+  const [mediumRiskCount, setMediumRiskCount] = useState(0);
+  const [highRiskCount, setHighRiskCount] = useState(0);
 
   useEffect(() => {
     document.title = "FuseBox AI Ops";
@@ -167,6 +170,9 @@ function App() {
     setAnomalyCount(0);
     setIncidentRecords([]);
     setExpandedEntry(null);
+    setLowRiskCount(0);
+    setMediumRiskCount(0);
+    setHighRiskCount(0);
   };
 
   const handleUnlock = () => {
@@ -222,6 +228,9 @@ function App() {
         };
         setIncidentRecords((prev) => [newIncident, ...prev].slice(0, 5));
       }
+      if (data.risk === "low") setLowRiskCount((prev) => prev + 1);
+      else if (data.risk === "medium") setMediumRiskCount((prev) => prev + 1);
+      else if (data.risk === "high") setHighRiskCount((prev) => prev + 1);
       setLog((prev) => {
         const newEntry = {
           id: Date.now(),
@@ -326,6 +335,29 @@ function App() {
       ? (totalSavings / totalProcessed) * ANNUAL_TICKET_VOLUME
       : 0;
   const mostRecentLiveId = log.filter((e) => e.live)[0]?.id;
+  const highRiskPct =
+    totalProcessed > 0 ? Math.round((highRiskCount / totalProcessed) * 100) : 0;
+  const mediumRiskPct =
+    totalProcessed > 0
+      ? Math.round((mediumRiskCount / totalProcessed) * 100)
+      : 0;
+  const lowRiskPct =
+    totalProcessed > 0 ? Math.round((lowRiskCount / totalProcessed) * 100) : 0;
+  const qualityRiskScore =
+    totalProcessed > 0
+      ? Math.round(
+          ((highRiskCount * 2 + mediumRiskCount * 1) / (totalProcessed * 2)) *
+            100,
+        )
+      : 0;
+  const qualityRiskLabel =
+    qualityRiskScore >= 60 ? "High" : qualityRiskScore >= 30 ? "Medium" : "Low";
+  const qualityRiskColor =
+    qualityRiskScore >= 60
+      ? "#ef4444"
+      : qualityRiskScore >= 30
+        ? "#f0a500"
+        : "#4caf50";
 
   if (!unlocked) {
     return (
@@ -867,6 +899,113 @@ function App() {
             </div>
           </div>
 
+          {totalProcessed > 0 && (
+            <div className="sidebar-card">
+              <div className="sidebar-card-title">
+                Quality Risk Distribution
+              </div>
+              <div className="risk-score-block">
+                <span
+                  className="risk-score-value"
+                  style={{ color: qualityRiskColor }}
+                >
+                  {qualityRiskLabel}
+                </span>
+                <span className="risk-score-label">overall quality risk</span>
+                <div className="risk-score-bar-track">
+                  <div
+                    className="risk-score-bar-fill"
+                    style={{
+                      width: `${qualityRiskScore}%`,
+                      background: qualityRiskColor,
+                    }}
+                  />
+                </div>
+                <span className="risk-score-sub">
+                  {qualityRiskScore}% weighted risk index
+                </span>
+              </div>
+              <div className="annual-divider" />
+              <div className="model-dist">
+                <div className="model-dist-row">
+                  <div className="model-dist-info">
+                    <span
+                      className="model-dist-dot"
+                      style={{
+                        background: "#4caf50",
+                        boxShadow: "0 0 6px rgba(76,175,80,0.7)",
+                      }}
+                    ></span>
+                    <span className="model-dist-name">Low</span>
+                    <span className="model-dist-label">{lowRiskPct}%</span>
+                  </div>
+                  <div className="model-dist-right">
+                    <div className="model-dist-bar-track">
+                      <div
+                        className="model-dist-bar"
+                        style={{
+                          width: `${lowRiskPct}%`,
+                          background: "linear-gradient(90deg,#4caf50,#66bb6a)",
+                        }}
+                      />
+                    </div>
+                    <span className="model-dist-count">{lowRiskCount}</span>
+                  </div>
+                </div>
+                <div className="model-dist-row">
+                  <div className="model-dist-info">
+                    <span
+                      className="model-dist-dot"
+                      style={{
+                        background: "#f0a500",
+                        boxShadow: "0 0 6px rgba(240,165,0,0.7)",
+                      }}
+                    ></span>
+                    <span className="model-dist-name">Medium</span>
+                    <span className="model-dist-label">{mediumRiskPct}%</span>
+                  </div>
+                  <div className="model-dist-right">
+                    <div className="model-dist-bar-track">
+                      <div
+                        className="model-dist-bar"
+                        style={{
+                          width: `${mediumRiskPct}%`,
+                          background: "linear-gradient(90deg,#f0a500,#ffc844)",
+                        }}
+                      />
+                    </div>
+                    <span className="model-dist-count">{mediumRiskCount}</span>
+                  </div>
+                </div>
+                <div className="model-dist-row">
+                  <div className="model-dist-info">
+                    <span
+                      className="model-dist-dot"
+                      style={{
+                        background: "#ef4444",
+                        boxShadow: "0 0 6px rgba(239,68,68,0.7)",
+                      }}
+                    ></span>
+                    <span className="model-dist-name">High</span>
+                    <span className="model-dist-label">{highRiskPct}%</span>
+                  </div>
+                  <div className="model-dist-right">
+                    <div className="model-dist-bar-track">
+                      <div
+                        className="model-dist-bar"
+                        style={{
+                          width: `${highRiskPct}%`,
+                          background: "linear-gradient(90deg,#ef4444,#ff6b6b)",
+                        }}
+                      />
+                    </div>
+                    <span className="model-dist-count">{highRiskCount}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="sidebar-card">
             <div className="sidebar-card-title">Agentic Intelligence</div>
             <div className="intel-grid">
@@ -1044,7 +1183,6 @@ function App() {
             >
               ✕
             </button>
-
             <div className="modal-log-header">
               <span className="log-time">{expandedEntry.timestamp}</span>
               <span className="badge live-badge">LIVE</span>
@@ -1060,12 +1198,10 @@ function App() {
                 {expandedEntry.risk} risk
               </span>
             </div>
-
             <p className="log-prompt">
               <span className="prompt-label">Prompt: </span>
               {expandedEntry.prompt}
             </p>
-
             {(expandedEntry.aiResponse || expandedEntry.reason) && (
               <div className="ai-response modal-ai-response">
                 <span className="ai-response-label">AI Triage Response</span>
@@ -1086,7 +1222,6 @@ function App() {
                 )}
               </div>
             )}
-
             <div className="log-footer">
               <span>Tokens: {expandedEntry.tokens}</span>
               <span>Cost: ${expandedEntry.cost}</span>
@@ -1162,7 +1297,6 @@ function App() {
                 </a>
               )}
             </div>
-
             {expandedEntry.ticketId &&
               mostRecentLiveId === expandedEntry.id && (
                 <div className="feedback-bar">
