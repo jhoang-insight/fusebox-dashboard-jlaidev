@@ -89,7 +89,7 @@ function generateCSV(log, totalCost, totalSavings, cheapCount, midCount, premium
 }
 
 function App() {
-  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem('fb_unlocked') === 'true');
+  const [unlocked, setUnlocked] = useState(() => localStorage.getItem('fb_unlocked') === 'true');
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState(false);
   const [log, setLog] = useState([]);
@@ -219,7 +219,7 @@ function App() {
   const handleUnlock = () => {
     if (passwordInput === DEMO_PASSWORD) {
       setUnlocked(true);
-      sessionStorage.setItem('fb_unlocked', 'true');
+      localStorage.setItem('fb_unlocked', 'true');
       setPasswordError(false);
     } else {
       setPasswordError(true);
