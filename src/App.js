@@ -244,6 +244,9 @@ function App() {
           aiResponse: data.response,
           reason: data.reason,
           knowledgeBase: data.knowledgeBase,
+          memoryUsed: data.memoryUsed,
+selfCorrected: data.selfCorrected,  
+
         };
         return [newEntry, ...prev].slice(0, 20);
       });
@@ -491,10 +494,17 @@ function App() {
                 </div>
               )}
               <div className="log-footer">
-                <span>Tokens: {entry.tokens}</span>
-                <span>Cost: ${entry.cost}</span>
-                <span>Savings: {entry.savings === 'N/A' ? 'N/A' : `$${entry.savings}`}</span>
-              </div>
+  <span>Tokens: {entry.tokens}</span>
+  <span>Cost: ${entry.cost}</span>
+  <span>Savings: {entry.savings === 'N/A' ? 'N/A' : `$${entry.savings}`}</span>
+  {entry.memoryUsed && entry.memoryUsed !== 'No memory context yet' && (
+    <span className="memory-badge">🧠 {entry.memoryUsed}</span>
+  )}
+  {entry.selfCorrected && (
+    <span className="correction-badge">⚡ Self-corrected</span>
+  )}
+</div>
+
             </div>
           ))}
         </div>

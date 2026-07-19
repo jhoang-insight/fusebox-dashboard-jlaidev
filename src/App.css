@@ -823,3 +823,19 @@ body {
   box-shadow: 0 6px 20px rgba(211,14,140,0.6);
 }
 
+.memory-badge {
+  font-size: 9px;
+  font-weight: bold;
+  color: #4F93D9;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.correction-badge {
+  font-size: 9px;
+  font-weight: bold;
+  color: #ffd700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
