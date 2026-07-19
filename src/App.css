@@ -839,3 +839,21 @@ body {
   letter-spacing: 0.5px;
 }
 
+.confidence-badge {
+  font-size: 9px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.confidence-high { color: #4caf50; }
+.confidence-low { color: #ff8c00; }
+
+.anomaly-badge {
+  font-size: 9px;
+  font-weight: bold;
+  color: #D30E8C;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  animation: pulse 1.5s infinite;
+}

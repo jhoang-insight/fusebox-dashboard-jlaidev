@@ -246,6 +246,11 @@ function App() {
           knowledgeBase: data.knowledgeBase,
           memoryUsed: data.memoryUsed,
 selfCorrected: data.selfCorrected,  
+confidence: data.confidence,
+anomalyDetected: data.anomalyDetected,
+anomalyCount: data.anomalyCount,
+confidenceEscalated: data.confidenceEscalated,
+
 
         };
         return [newEntry, ...prev].slice(0, 20);
@@ -497,13 +502,25 @@ selfCorrected: data.selfCorrected,
   <span>Tokens: {entry.tokens}</span>
   <span>Cost: ${entry.cost}</span>
   <span>Savings: {entry.savings === 'N/A' ? 'N/A' : `$${entry.savings}`}</span>
+  {entry.confidence > 0 && (
+    <span className={`confidence-badge ${entry.confidence >= 70 ? 'confidence-high' : 'confidence-low'}`}>
+      {entry.confidence}% confidence
+    </span>
+  )}
   {entry.memoryUsed && entry.memoryUsed !== 'No memory context yet' && (
     <span className="memory-badge">🧠 {entry.memoryUsed}</span>
   )}
   {entry.selfCorrected && (
     <span className="correction-badge">⚡ Self-corrected</span>
   )}
+  {entry.anomalyDetected && (
+    <span className="anomaly-badge">🚨 Anomaly — {entry.anomalyCount} similar tickets</span>
+  )}
+  {entry.confidenceEscalated && (
+    <span className="correction-badge">⬆ Confidence escalated</span>
+  )}
 </div>
+
 
             </div>
           ))}

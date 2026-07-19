@@ -23,10 +23,16 @@ const CHEAP_COST_PER_1K = 0.0001;
 const MID_COST_PER_1K = 0.0014;
 const PREMIUM_COST_PER_1K = 0.007;
 
+const CONFIDENCE_THRESHOLD = 70;
+const ANOMALY_THRESHOLD = 3;
+const ANOMALY_WINDOW_MINUTES = 30;
+
 const UNCERTAINTY_WORDS = [
   "unclear", "ambiguous", "could be", "uncertain", "not sure",
   "borderline", "possibly", "might be", "hard to say", "difficult to determine",
-  "on the fence", "leaning towards", "may be"
+  "on the fence", "leaning towards", "may be", "not entirely", "somewhat",
+  "appears to be", "seems like", "could go either way", "limited information",
+  "insufficient", "vague", "generic", "broad", "unspecific", "no clear"
 ];
 
 const CORS_HEADERS = {
@@ -36,7 +42,6 @@ const CORS_HEADERS = {
   "Content-Type": "application/json"
 };
 
-// Cosmos DB client — initialized once at module level
 let cosmosContainer;
 function getCosmosContainer() {
   if (!cosmosContainer) {
@@ -105,7 +110,7 @@ async function getMemoryContext(complexity) {
   try {
     const container = getCosmosContainer();
     const query = {
-      query: "SELECT TOP 3 c.prompt, c.complexity, c.model, c.reason, c.selfCorrected FROM c WHERE c.complexity = @complexity ORDER BY c._ts DESC",
+      query: "SELECT TOP 3 c.prompt, c.complexity, c.model, c.reason, c.selfCorrected, c.confidence FROM c WHERE c.complexity = @complexity ORDER BY c._ts DESC",
       parameters: [{ name: "@complexity", value: complexity }]
     };
     const { resources } = await container.items.query(query).fetchAll();
@@ -113,6 +118,26 @@ async function getMemoryContext(complexity) {
   } catch (e) {
     console.error("Cosmos memory read failed:", e.message);
     return [];
+  }
+}
+
+async function checkAnomaly(complexity) {
+  try {
+    const container = getCosmosContainer();
+    const windowStart = new Date(Date.now() - ANOMALY_WINDOW_MINUTES * 60 * 1000).toISOString();
+    const query = {
+      query: "SELECT VALUE COUNT(1) FROM c WHERE c.complexity = @complexity AND c.timestamp >= @windowStart",
+      parameters: [
+        { name: "@complexity", value: complexity },
+        { name: "@windowStart", value: windowStart }
+      ]
+    };
+    const { resources } = await container.items.query(query).fetchAll();
+    const count = resources[0] || 0;
+    return { anomalyDetected: count >= ANOMALY_THRESHOLD, count };
+  } catch (e) {
+    console.error("Anomaly check failed:", e.message);
+    return { anomalyDetected: false, count: 0 };
   }
 }
 
@@ -127,6 +152,7 @@ async function writeMemory(entry) {
       risk: entry.risk,
       reason: entry.reason,
       selfCorrected: entry.selfCorrected || false,
+      confidence: entry.confidence || 0,
       timestamp: new Date().toISOString()
     });
   } catch (e) {
@@ -140,18 +166,12 @@ async function updateKnowledgeBase(prompt, agentModel, kbIssues, context) {
     const res = await fetch(url);
     if (!res.ok) return;
     const data = await res.json();
-
-    // Extract key words from prompt as new pattern
     const words = prompt.toLowerCase().split(/\s+/).filter(w => w.length > 4);
     const newPattern = words.slice(0, 3).join(" ");
-
-    // Only add if pattern is not already in KB
     const alreadyExists = data.knownIssues.some(issue =>
       issue.pattern.some(p => p.includes(newPattern))
     );
-
     if (alreadyExists) return;
-
     const severity = agentModel === PREMIUM_MODEL ? "high" : agentModel === MID_MODEL ? "medium" : "low";
     const newIssue = {
       id: `KI-AUTO-${Date.now()}`,
@@ -160,12 +180,8 @@ async function updateKnowledgeBase(prompt, agentModel, kbIssues, context) {
       severity,
       recommendation: `Route to ${agentModel} — learned from agent override`
     };
-
     data.knownIssues.push(newIssue);
-
-    // Upload updated KB back to blob
-    const uploadUrl = `https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/${STORAGE_CONTAINER_NAME}/knownIssues.json?${BLOB_SAS_TOKEN}`;
-    await fetch(uploadUrl, {
+    await fetch(url, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -173,7 +189,6 @@ async function updateKnowledgeBase(prompt, agentModel, kbIssues, context) {
       },
       body: JSON.stringify(data)
     });
-
     context.log("KB auto-updated with new pattern:", newPattern);
   } catch (e) {
     context.log("KB auto-update failed:", e.message);
@@ -182,14 +197,14 @@ async function updateKnowledgeBase(prompt, agentModel, kbIssues, context) {
 
 async function callFuseBoxAgent(prompt, knownIssueContext, memoryContext, context) {
   const memoryBlock = memoryContext.length > 0
-    ? `\n\nMEMORY — SIMILAR PAST TICKETS:\n${memoryContext.map(m => `- "${m.prompt}" was routed to ${m.model} (${m.complexity})${m.selfCorrected ? " — self-corrected" : ""}`).join("\n")}`
+    ? `\n\nMEMORY — SIMILAR PAST TICKETS:\n${memoryContext.map(m => `- "${m.prompt}" was routed to ${m.model} (${m.complexity}, confidence: ${m.confidence || "unknown"})${m.selfCorrected ? " — self-corrected" : ""}`).join("\n")}`
     : "";
 
   const kbBlock = knownIssueContext.matched
     ? `\n\nKNOWN ISSUE CONTEXT FROM KNOWLEDGE BASE:\n${knownIssueContext.issues.map(i => `- ${i.title} (${i.severity} severity): ${i.recommendation}`).join("\n")}`
     : "";
 
-  const enrichedInput = `TICKET: ${prompt}${kbBlock}${memoryBlock}\n\nFactor all context into your classification.`;
+  const enrichedInput = `TICKET: ${prompt}${kbBlock}${memoryBlock}\n\nFactor all context into your classification. Include a confidence score 0-100 in your JSON response.`;
 
   const res = await fetch(AGENT_ENDPOINT, {
     method: "POST",
@@ -207,8 +222,6 @@ async function callFuseBoxAgent(prompt, knownIssueContext, memoryContext, contex
   }
 
   const data = await res.json();
-  context.log("FuseBox agent raw response status:", data.status);
-
   const text = data?.output?.[0]?.content?.[0]?.text;
   if (!text) throw new Error("No text content in FuseBox agent response");
 
@@ -225,26 +238,24 @@ async function callFuseBoxAgent(prompt, knownIssueContext, memoryContext, contex
     complexity: parsed.complexity || "medium",
     risk: parsed.risk || "medium",
     model: validModels.includes(parsed.model) ? parsed.model : MID_MODEL,
-    reason: parsed.reason || "FuseBox agent classification"
+    reason: parsed.reason || "FuseBox agent classification",
+    confidence: typeof parsed.confidence === "number" ? parsed.confidence : 75
   };
 }
 
 async function callFuseBoxAgentWithSelfCorrection(prompt, knownIssueContext, memoryContext, context) {
-  // First pass
   const firstResult = await callFuseBoxAgent(prompt, knownIssueContext, memoryContext, context);
 
-  // Check for uncertainty in the reason
   const reasonLower = firstResult.reason.toLowerCase();
-  const isUncertain = UNCERTAINTY_WORDS.some(word => reasonLower.includes(word));
+  const isUncertain = UNCERTAINTY_WORDS.some(word => reasonLower.includes(word)) || firstResult.confidence < CONFIDENCE_THRESHOLD;
 
   if (!isUncertain) {
     return { ...firstResult, selfCorrected: false };
   }
 
-  context.log("Uncertainty detected in agent reason — triggering self-correction:", firstResult.reason);
+  context.log("Uncertainty detected — confidence:", firstResult.confidence, "reason:", firstResult.reason);
 
-  // Self-correction prompt — more targeted
-  const correctionPrompt = `TICKET: ${prompt}\n\nYour previous classification was ${firstResult.complexity} with reason: "${firstResult.reason}"\n\nYou expressed uncertainty. Please reconsider carefully. Focus on these specific factors:\n- How many users are affected?\n- Is this tenant-wide or isolated?\n- Does this involve infrastructure, identity, or security?\n- What is the business impact if unresolved?\n\nProvide a definitive classification with high confidence.`;
+  const correctionPrompt = `TICKET: ${prompt}\n\nYour previous classification was ${firstResult.complexity} with confidence ${firstResult.confidence}/100 and reason: "${firstResult.reason}"\n\nYou expressed uncertainty. Please reconsider carefully. Focus on:\n- How many users are affected?\n- Is this tenant-wide or isolated?\n- Does this involve infrastructure, identity, or security?\n- What is the business impact if unresolved?\n\nProvide a definitive classification with high confidence. Include confidence score in your JSON.`;
 
   const correctionRes = await fetch(AGENT_ENDPOINT, {
     method: "POST",
@@ -257,23 +268,16 @@ async function callFuseBoxAgentWithSelfCorrection(prompt, knownIssueContext, mem
   });
 
   if (!correctionRes.ok) {
-    context.log("Self-correction call failed — using original result");
     return { ...firstResult, selfCorrected: false };
   }
 
   const correctionData = await correctionRes.json();
   const correctionText = correctionData?.output?.[0]?.content?.[0]?.text;
-
-  if (!correctionText) {
-    return { ...firstResult, selfCorrected: false };
-  }
+  if (!correctionText) return { ...firstResult, selfCorrected: false };
 
   const correctionCleaned = correctionText.replace(/```json|```/g, "").trim();
   const correctionMatch = correctionCleaned.match(/\{[\s\S]*\}/);
-
-  if (!correctionMatch) {
-    return { ...firstResult, selfCorrected: false };
-  }
+  if (!correctionMatch) return { ...firstResult, selfCorrected: false };
 
   const correctionParsed = JSON.parse(correctionMatch[0]);
   const validModels = [CHEAP_MODEL, MID_MODEL, PREMIUM_MODEL];
@@ -285,6 +289,7 @@ async function callFuseBoxAgentWithSelfCorrection(prompt, knownIssueContext, mem
     risk: correctionParsed.risk || firstResult.risk,
     model: validModels.includes(correctionParsed.model) ? correctionParsed.model : firstResult.model,
     reason: `[Self-corrected] ${correctionParsed.reason || firstResult.reason}`,
+    confidence: typeof correctionParsed.confidence === "number" ? correctionParsed.confidence : firstResult.confidence,
     selfCorrected: true
   };
 }
@@ -337,32 +342,22 @@ app.http("alert", {
     if (request.method === "OPTIONS") {
       return { status: 204, headers: CORS_HEADERS };
     }
-
     let body;
     try {
       body = await request.json();
     } catch (e) {
       return { status: 400, headers: CORS_HEADERS, jsonBody: { error: "Invalid JSON body" } };
     }
-
     const { type, totalSpend, triggerPrompt, model, cost } = body;
     const isExceeded = type === "exceeded";
-
     const subject = isExceeded
       ? "URGENT: FuseBox Budget Limit Exceeded"
       : "WARNING: FuseBox Budget Threshold Reached";
-
     const bodyText = isExceeded
       ? `Project FuseBox AI spend has exceeded the budget limit of $0.0010.\n\nCurrent spend: $${parseFloat(totalSpend).toFixed(6)}\nTriggered by: ${triggerPrompt}\nModel used: ${model}\nCost of this request: $${parseFloat(cost).toFixed(6)}\n\nReview AI spend immediately in the FuseBox dashboard.`
       : `Project FuseBox AI spend has reached the alert threshold of $0.0003.\n\nCurrent spend: $${parseFloat(totalSpend).toFixed(6)}\nTriggered by: ${triggerPrompt}\nModel used: ${model}\nCost of this request: $${parseFloat(cost).toFixed(6)}\n\nMonitor spend closely.`;
-
     await sendAlertEmail(subject, bodyText);
-
-    return {
-      status: 200,
-      headers: CORS_HEADERS,
-      jsonBody: { sent: true, type }
-    };
+    return { status: 200, headers: CORS_HEADERS, jsonBody: { sent: true, type } };
   }
 });
 
@@ -394,16 +389,21 @@ app.http("route", {
     const knownIssueContext = await checkKnownIssues(prompt);
     context.log("Known issue check result:", knownIssueContext);
 
-    // Step 2 — Predict complexity from KB for memory query
+    // Step 2 — Predict complexity from KB for memory and anomaly queries
     let predictedComplexity = "medium";
     if (knownIssueContext.matched) {
       const highSeverity = knownIssueContext.issues.some(i => i.severity === "high");
       predictedComplexity = highSeverity ? "complex" : "medium";
     }
 
-    // Step 3 — Query Cosmos DB memory for similar past tickets
-    const memoryContext = await getMemoryContext(predictedComplexity);
-    context.log("Memory context retrieved:", memoryContext.length, "past tickets");
+    // Step 3 — Query memory and check anomaly in parallel
+    const [memoryContext, anomalyResult] = await Promise.all([
+      getMemoryContext(predictedComplexity),
+      checkAnomaly(predictedComplexity)
+    ]);
+
+    context.log("Memory context:", memoryContext.length, "past tickets");
+    context.log("Anomaly check:", anomalyResult);
 
     // Step 4 — Agent classification with self-correction and 20 second timeout
     let classification;
@@ -420,25 +420,57 @@ app.http("route", {
         const highSeverity = knownIssueContext.issues.some(i => i.severity === "high");
         const medSeverity = knownIssueContext.issues.some(i => i.severity === "medium");
         if (highSeverity) {
-          classification = { complexity: "complex", risk: "high", model: PREMIUM_MODEL, reason: `KB match: ${knownIssueContext.issues.map(i => i.title).join(", ")}`, selfCorrected: false };
+          classification = { complexity: "complex", risk: "high", model: PREMIUM_MODEL, reason: `KB match: ${knownIssueContext.issues.map(i => i.title).join(", ")}`, selfCorrected: false, confidence: 80 };
         } else if (medSeverity) {
-          classification = { complexity: "medium", risk: "medium", model: MID_MODEL, reason: `KB match: ${knownIssueContext.issues.map(i => i.title).join(", ")}`, selfCorrected: false };
+          classification = { complexity: "medium", risk: "medium", model: MID_MODEL, reason: `KB match: ${knownIssueContext.issues.map(i => i.title).join(", ")}`, selfCorrected: false, confidence: 80 };
         } else {
-          classification = { complexity: "medium", risk: "medium", model: MID_MODEL, reason: "Fallback - agent timeout", selfCorrected: false };
+          classification = { complexity: "medium", risk: "medium", model: MID_MODEL, reason: "Fallback - agent timeout", selfCorrected: false, confidence: 50 };
         }
       } else {
-        classification = { complexity: "medium", risk: "medium", model: MID_MODEL, reason: "Fallback - agent timeout", selfCorrected: false };
+        classification = { complexity: "medium", risk: "medium", model: MID_MODEL, reason: "Fallback - agent timeout", selfCorrected: false, confidence: 50 };
       }
     }
 
-    const { complexity, risk, model, reason, selfCorrected } = classification;
+    let { complexity, risk, model, reason, selfCorrected, confidence } = classification;
+
+    // Step 5 — Anomaly override — if pattern detected escalate to Kimi regardless
+    let anomalyEscalated = false;
+    if (anomalyResult.anomalyDetected && model !== PREMIUM_MODEL) {
+      context.log("Anomaly detected — escalating to Kimi-K2.6");
+      model = PREMIUM_MODEL;
+      complexity = "complex";
+      risk = "high";
+      reason = `[Anomaly detected — ${anomalyResult.count} similar tickets in last ${ANOMALY_WINDOW_MINUTES} min] ${reason}`;
+      anomalyEscalated = true;
+
+      // Fire anomaly alert email
+      sendAlertEmail(
+        "INCIDENT ALERT: FuseBox Anomaly Detected",
+        `FuseBox has detected a potential widespread incident.\n\n${anomalyResult.count} similar ${complexity} tickets submitted in the last ${ANOMALY_WINDOW_MINUTES} minutes.\n\nLatest ticket: ${prompt}\n\nAutomatically escalated to Kimi-K2.6 for advanced triage.\n\nReview the FuseBox dashboard immediately.`
+      ).catch(e => console.error("Anomaly alert email failed:", e.message));
+    }
+
+    // Step 6 — Confidence escalation — if below threshold escalate to next tier
+    let confidenceEscalated = false;
+    if (confidence < CONFIDENCE_THRESHOLD && !anomalyEscalated) {
+      if (model === CHEAP_MODEL) {
+        model = MID_MODEL;
+        confidenceEscalated = true;
+        reason = `[Confidence ${confidence}% — escalated from phi-4-mini] ${reason}`;
+      } else if (model === MID_MODEL) {
+        model = PREMIUM_MODEL;
+        confidenceEscalated = true;
+        reason = `[Confidence ${confidence}% — escalated from DeepSeek] ${reason}`;
+      }
+      context.log("Low confidence escalation — new model:", model);
+    }
 
     let costPer1k;
     if (model === CHEAP_MODEL) costPer1k = CHEAP_COST_PER_1K;
     else if (model === MID_MODEL) costPer1k = MID_COST_PER_1K;
     else costPer1k = PREMIUM_COST_PER_1K;
 
-    // Step 5 — Triage response
+    // Step 7 — Triage response
     let response;
     try {
       response = await callTriageModel(model, prompt, context);
@@ -454,12 +486,12 @@ app.http("route", {
 
     const triageText = response?.choices?.[0]?.message?.content || response?.choices?.[0]?.message?.reasoning_content || "Triage response unavailable";
 
-    // Step 6 — Write to Cosmos DB memory (fire and forget)
-    writeMemory({ prompt, complexity, model, risk, reason, selfCorrected }).catch(e =>
+    // Step 8 — Write to Cosmos DB memory
+    writeMemory({ prompt, complexity, model, risk, reason, selfCorrected, confidence }).catch(e =>
       context.log("Memory write failed:", e.message)
     );
 
-    // Step 7 — KB auto-update if agent overrode KB recommendation (fire and forget)
+    // Step 9 — KB auto-update if agent overrode KB recommendation
     if (knownIssueContext.matched) {
       const kbRecommendedModel = knownIssueContext.issues[0].severity === "high" ? PREMIUM_MODEL : MID_MODEL;
       if (model !== kbRecommendedModel) {
@@ -488,7 +520,11 @@ app.http("route", {
           ? `Matched ${knownIssueContext.issues.length} known issue(s): ${knownIssueContext.issues.map(i => i.title).join(", ")}`
           : "No known issues matched",
         memoryUsed: memoryContext.length > 0 ? `${memoryContext.length} past tickets referenced` : "No memory context yet",
-        selfCorrected: selfCorrected || false
+        selfCorrected: selfCorrected || false,
+        confidence: confidence || 0,
+        anomalyDetected: anomalyResult.anomalyDetected,
+        anomalyCount: anomalyResult.count,
+        confidenceEscalated: confidenceEscalated
       }
     };
   }
