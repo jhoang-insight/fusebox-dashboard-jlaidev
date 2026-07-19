@@ -4,7 +4,6 @@ import "./App.css";
 const DEMO_PASSWORD = "TokenBurners2026";
 
 const PROMPTS = [
-  // ── SIMPLE (25) — phi-4-mini ─────────────────────────────────────────────
   {
     text: "User cannot log into their laptop. Password reset needed.",
     complexity: "simple",
@@ -180,8 +179,6 @@ const PROMPTS = [
     costPer1k: 0.0001,
     risk: "low",
   },
-
-  // ── MEDIUM (15) — DeepSeek-V4-Flash ──────────────────────────────────────
   {
     text: "Outlook not syncing emails for the entire sales team since this morning. VPN is connected.",
     complexity: "medium",
@@ -287,8 +284,6 @@ const PROMPTS = [
     costPer1k: 0.0014,
     risk: "medium",
   },
-
-  // ── COMPLEX (10) — Kimi-K2.6 ─────────────────────────────────────────────
   {
     text: "47 users cannot access Azure Virtual Desktop across three sites. Host pool appears down.",
     complexity: "complex",
@@ -449,7 +444,7 @@ function generateCSV(
   const a = document.createElement("a");
   a.href = url;
   a.download =
-    "fusebox-report-" + new Date().toISOString().slice(0, 10) + ".csv";
+    "fusebox-aiops-report-" + new Date().toISOString().slice(0, 10) + ".csv";
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -484,7 +479,7 @@ function App() {
   const intervalRef = useRef(null);
 
   useEffect(() => {
-    document.title = "Project FuseBox";
+    document.title = "FuseBox AI Ops";
   }, []);
 
   useEffect(() => {
@@ -716,7 +711,7 @@ function App() {
           body: JSON.stringify({
             ticketId,
             resolutionStatus: status,
-            resolutionNotes: `Marked ${status} via FuseBox dashboard`,
+            resolutionNotes: `Marked ${status} via FuseBox AI Ops dashboard`,
             reportUrl: reportUrl || null,
           }),
         },
@@ -749,6 +744,7 @@ function App() {
     totalProcessed > 0
       ? (totalSavings / totalProcessed) * ANNUAL_TICKET_VOLUME
       : 0;
+  const mostRecentLiveId = log.filter((e) => e.live)[0]?.id;
 
   if (!unlocked) {
     return (
@@ -757,12 +753,14 @@ function App() {
           <div className="gate-logo-wrap">
             <img
               src="/fusebox-logo-192.png"
-              alt="FuseBox Logo"
+              alt="FuseBox AI Ops Logo"
               className="gate-logo-img"
             />
           </div>
-          <h1 className="gate-title">Project FuseBox</h1>
-          <p className="gate-subtitle">Enterprise AI FinOps Platform</p>
+          <h1 className="gate-title">FuseBox AI Ops</h1>
+          <p className="gate-subtitle">
+            Autonomous AI FinOps for Enterprise IT
+          </p>
           <p className="gate-team">
             Team Token Burners — Insight Hackathon 2026
           </p>
@@ -794,12 +792,14 @@ function App() {
             <div className="header-logo-row">
               <img
                 src="/fusebox-logo-192.png"
-                alt="FuseBox"
+                alt="FuseBox AI Ops"
                 className="header-logo-img"
               />
               <div className="header-title-block">
-                <h1 className="title">Project FuseBox</h1>
-                <span className="subtitle">Enterprise AI FinOps Platform</span>
+                <h1 className="title">FuseBox AI Ops</h1>
+                <span className="subtitle">
+                  Autonomous AI FinOps for Enterprise IT
+                </span>
               </div>
             </div>
           </div>
@@ -892,7 +892,7 @@ function App() {
                 className="flame-logo-img"
               />
             </div>
-            <span className="flame-text">FuseBox Routing...</span>
+            <span className="flame-text">FuseBox AI Ops Routing...</span>
           </div>
         )}
 
@@ -996,15 +996,15 @@ function App() {
                       className="correction-badge"
                       title="The agent detected uncertainty in its first classification and re-evaluated to produce a higher confidence decision"
                     >
-                      ⚡ Self-corrected
+                      Self-corrected
                     </span>
                   )}
                   {entry.anomalyDetected && (
                     <span
                       className="anomaly-badge"
-                      title="FuseBox detected a pattern spike and autonomously escalated this ticket and generated an incident report"
+                      title="FuseBox AI Ops detected a pattern spike and autonomously escalated this ticket and generated an incident report"
                     >
-                      🚨 Anomaly — {entry.anomalyCount} similar tickets
+                      Anomaly — {entry.anomalyCount} similar tickets
                     </span>
                   )}
                   {entry.confidenceEscalated && (
@@ -1012,7 +1012,7 @@ function App() {
                       className="correction-badge"
                       title="Confidence score was below threshold — ticket was automatically escalated to a more capable model"
                     >
-                      ⬆ Confidence escalated
+                      Confidence escalated
                     </span>
                   )}
                   {entry.auditorResult && (
@@ -1043,69 +1043,99 @@ function App() {
                 </div>
                 {entry.live &&
                   entry.ticketId &&
-                  log.filter((e) => e.live)[0]?.id === entry.id && (
+                  mostRecentLiveId === entry.id && (
                     <div className="feedback-bar">
                       {entry.feedbackSubmitted ? (
-                        <span
-                          className={`feedback-confirmed feedback-${entry.feedbackStatus}`}
-                        >
-                          {entry.feedbackStatus === "resolved"
-                            ? "✓ Resolved"
-                            : entry.feedbackStatus === "escalated"
-                              ? "⬆ Escalated"
-                              : "✕ Failed"}{" "}
-                          — outcome written to memory
-                        </span>
+                        <div className="feedback-submitted-row">
+                          <span
+                            className={`feedback-confirmed feedback-${entry.feedbackStatus}`}
+                          >
+                            {entry.feedbackStatus === "resolved"
+                              ? "✓ Resolved"
+                              : entry.feedbackStatus === "escalated"
+                                ? "Escalated"
+                                : "✕ Failed"}{" "}
+                            — outcome written to memory
+                          </span>
+                          {entry.reportUrl && (
+                            <a
+                              href={entry.reportUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="report-link"
+                              style={{ marginLeft: "8px" }}
+                            >
+                              📄 View Incident Report
+                            </a>
+                          )}
+                        </div>
                       ) : (
                         <>
-                          <span className="feedback-label">
-                            Resolution outcome:
-                          </span>
-                          <button
-                            className="btn-feedback btn-feedback-resolved"
-                            onClick={() =>
-                              handleFeedback(
-                                entry.id,
-                                entry.ticketId,
-                                "resolved",
-                                entry.reportUrl,
-                              )
-                            }
-                            disabled={feedbackLoading}
-                            title="Mark this ticket as successfully resolved — outcome written to FuseBox memory"
-                          >
-                            ✓ Resolved
-                          </button>
-                          <button
-                            className="btn-feedback btn-feedback-escalated"
-                            onClick={() =>
-                              handleFeedback(
-                                entry.id,
-                                entry.ticketId,
-                                "escalated",
-                                entry.reportUrl,
-                              )
-                            }
-                            disabled={feedbackLoading}
-                            title="Mark this ticket as escalated to a higher tier — outcome written to FuseBox memory"
-                          >
-                            ⬆ Escalated
-                          </button>
-                          <button
-                            className="btn-feedback btn-feedback-failed"
-                            onClick={() =>
-                              handleFeedback(
-                                entry.id,
-                                entry.ticketId,
-                                "failed",
-                                entry.reportUrl,
-                              )
-                            }
-                            disabled={feedbackLoading}
-                            title="Mark this ticket as failed to resolve — outcome written to FuseBox memory"
-                          >
-                            ✕ Failed
-                          </button>
+                          <div className="feedback-prompt">
+                            <span className="feedback-pulse-dot" />
+                            <span className="feedback-prompt-text">
+                              Close the loop — select resolution outcome to
+                              write back to memory:
+                            </span>
+                          </div>
+                          <div className="feedback-buttons-row">
+                            {entry.reportUrl && (
+                              <a
+                                href={entry.reportUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="report-link"
+                                style={{ marginRight: "4px" }}
+                              >
+                                📄 View Incident Report
+                              </a>
+                            )}
+                            <button
+                              className="btn-feedback btn-feedback-resolved"
+                              onClick={() =>
+                                handleFeedback(
+                                  entry.id,
+                                  entry.ticketId,
+                                  "resolved",
+                                  entry.reportUrl,
+                                )
+                              }
+                              disabled={feedbackLoading}
+                              title="Mark this ticket as successfully resolved — outcome written to FuseBox AI Ops memory"
+                            >
+                              ✓ Resolved
+                            </button>
+                            <button
+                              className="btn-feedback btn-feedback-escalated"
+                              onClick={() =>
+                                handleFeedback(
+                                  entry.id,
+                                  entry.ticketId,
+                                  "escalated",
+                                  entry.reportUrl,
+                                )
+                              }
+                              disabled={feedbackLoading}
+                              title="Mark this ticket as escalated to a higher tier — outcome written to FuseBox AI Ops memory"
+                            >
+                              Escalated
+                            </button>
+                            <button
+                              className="btn-feedback btn-feedback-failed"
+                              onClick={() =>
+                                handleFeedback(
+                                  entry.id,
+                                  entry.ticketId,
+                                  "failed",
+                                  entry.reportUrl,
+                                )
+                              }
+                              disabled={feedbackLoading}
+                              title="Mark this ticket as failed to resolve — outcome written to FuseBox AI Ops memory"
+                            >
+                              ✕ Failed
+                            </button>
+                          </div>
                         </>
                       )}
                     </div>
@@ -1166,7 +1196,9 @@ function App() {
               <div className="annual-divider" />
               <div className="annual-compare">
                 <div className="annual-compare-row">
-                  <span className="annual-compare-label">Without FuseBox</span>
+                  <span className="annual-compare-label">
+                    Without FuseBox AI Ops
+                  </span>
                   <span className="annual-compare-val baseline-val">
                     {formatAnnual(
                       ((totalCost + totalSavings) / totalProcessed) *
@@ -1175,7 +1207,9 @@ function App() {
                   </span>
                 </div>
                 <div className="annual-compare-row">
-                  <span className="annual-compare-label">With FuseBox</span>
+                  <span className="annual-compare-label">
+                    With FuseBox AI Ops
+                  </span>
                   <span className="annual-compare-val green-val">
                     {formatAnnual(
                       (totalCost / totalProcessed) * ANNUAL_TICKET_VOLUME,
@@ -1270,7 +1304,7 @@ function App() {
                 className="intel-item"
                 title="Number of times the agent detected uncertainty and re-evaluated its own classification decision"
               >
-                <span className="intel-icon">⚡</span>
+                <span className="intel-icon">🔄</span>
                 <span className="intel-value">{selfCorrectionCount}</span>
                 <span className="intel-label">Self-Corrections</span>
               </div>
@@ -1292,7 +1326,7 @@ function App() {
               </div>
               <div
                 className="intel-item"
-                title="Number of times FuseBox detected a ticket pattern spike and autonomously escalated to incident response"
+                title="Number of times FuseBox AI Ops detected a ticket pattern spike and autonomously escalated to incident response"
               >
                 <span className="intel-icon">🚨</span>
                 <span className="intel-value">{anomalyCount}</span>
@@ -1348,10 +1382,9 @@ function App() {
             <div className="status-list">
               <div className="status-row">
                 <span className="status-dot dot-online"></span>
-                <span className="status-name">Knowledge Base</span>
-                <span className="status-tag">File Search</span>
+                <span className="status-name">FuseBox Agent</span>
+                <span className="status-tag">Foundry v3</span>
               </div>
-
               <div className="status-row">
                 <span className="status-dot dot-online"></span>
                 <span className="status-name">FuseBox-Auditor</span>
@@ -1380,7 +1413,7 @@ function App() {
               <div className="status-row">
                 <span className="status-dot dot-online"></span>
                 <span className="status-name">Knowledge Base</span>
-                <span className="status-tag">Blob Storage</span>
+                <span className="status-tag">File Search</span>
               </div>
               <div className="status-row">
                 <span className="status-dot dot-online"></span>
@@ -1436,7 +1469,7 @@ function App() {
         <span className="footer-team">Team Token Burners</span>
         <span className="footer-divider">|</span>
         <span className="footer-project">
-          Project FuseBox — Enterprise AI FinOps Platform
+          FuseBox AI Ops — Autonomous AI FinOps for Enterprise IT
         </span>
         <span className="footer-divider">|</span>
         <span className="footer-hackathon">Insight Hackathon 2026</span>
