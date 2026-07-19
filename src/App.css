@@ -1453,12 +1453,14 @@ body {
 /* FEEDBACK BAR */
 .feedback-bar {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
-  padding: 10px 0 2px 0;
-  border-top: 1px solid #3a2560;
-  margin-top: 8px;
+  padding: 12px 14px;
+  border-top: 2px solid #d30e8c;
+  margin-top: 10px;
   flex-wrap: wrap;
+  background: rgba(211, 14, 140, 0.06);
+  border-radius: 0 0 10px 10px;
 }
 
 .feedback-label {
@@ -1549,4 +1551,20 @@ body {
   border-color: #ef4444;
   background: rgba(239, 68, 68, 0.2);
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+}
+
+.feedback-buttons-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.feedback-prompt-text {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #ffffff;
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(211, 14, 140, 0.6);
 }
