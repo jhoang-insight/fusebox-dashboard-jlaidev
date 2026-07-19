@@ -476,6 +476,17 @@ function App() {
   </span>
 )}
 
+{entry.reportUrl && (
+                    <a
+                      href={entry.reportUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="report-link"
+                    >
+                      📄 View Full Incident Report
+                    </a>
+                  )}
+
                 </div>
               </div>
             ))}

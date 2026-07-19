@@ -196,6 +196,242 @@ async function updateKnowledgeBase(prompt, agentModel, kbIssues, context) {
   }
 }
 
+function generateIncidentReportHTML(incidentId, prompt, complexity, model, risk, reason, confidence, anomalyCount, totalTokens, cost, savings, memoryContext, knownIssueContext, selfCorrected, auditorResult, auditorOverride, timestamp) {
+  const priorityLabel = complexity === "complex" ? "P1 — Critical" : complexity === "medium" ? "P2 — High" : "P3 — Medium";
+  const priorityColor = complexity === "complex" ? "#ef4444" : complexity === "medium" ? "#f0a500" : "#4F93D9";
+  const modelColor = model === CHEAP_MODEL ? "#4F93D9" : model === MID_MODEL ? "#f0a500" : "#D30E8C";
+
+  const memoryRows = memoryContext.length > 0
+    ? memoryContext.map((m, i) => `
+        <tr style="border-bottom:1px solid #2a1a45;">
+          <td style="padding:10px;color:#aaa;font-size:13px;">${i + 1}</td>
+          <td style="padding:10px;color:#fff;font-size:13px;">${m.prompt}</td>
+          <td style="padding:10px;color:#f0a500;font-size:13px;">${m.complexity}</td>
+          <td style="padding:10px;color:#4F93D9;font-size:13px;">${m.model}</td>
+          <td style="padding:10px;color:#4caf50;font-size:13px;">${m.confidence || 'N/A'}%</td>
+        </tr>`).join("")
+    : `<tr><td colspan="5" style="padding:16px;color:#555;text-align:center;font-size:13px;">No memory context available</td></tr>`;
+
+  const kbSection = knownIssueContext.matched
+    ? knownIssueContext.issues.map(i => `
+        <div style="background:rgba(79,147,217,0.1);border:1px solid rgba(79,147,217,0.3);border-radius:8px;padding:12px 16px;margin-bottom:8px;">
+          <div style="color:#4F93D9;font-weight:bold;font-size:13px;margin-bottom:4px;">${i.title}</div>
+          <div style="color:#aaa;font-size:12px;">Severity: ${i.severity} — ${i.recommendation}</div>
+        </div>`).join("")
+    : `<div style="color:#555;font-size:13px;padding:8px 0;">No known issues matched for this ticket pattern.</div>`;
+
+  const annualSavings = savings !== "N/A" ? (parseFloat(savings) * 50000).toFixed(2) : "0.00";
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FuseBox Incident Report — ${incidentId}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: #0e0e14; color: #fff; padding: 40px 20px; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .header { background: linear-gradient(135deg, #1a0a2e 0%, #2d0f5e 50%, #1a0a2e 100%); border: 1px solid #D30E8C; border-radius: 16px; padding: 32px 40px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }
+    .header-left h1 { font-size: 28px; font-weight: bold; color: #fff; margin-bottom: 4px; }
+    .header-left p { font-size: 12px; color: #a78bca; text-transform: uppercase; letter-spacing: 1px; }
+    .header-right { text-align: right; }
+    .incident-id { font-size: 22px; font-weight: bold; color: #D30E8C; font-family: monospace; }
+    .incident-time { font-size: 12px; color: #888; margin-top: 4px; }
+    .priority-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: bold; margin-top: 8px; background: rgba(239,68,68,0.2); color: ${priorityColor}; border: 1px solid ${priorityColor}; }
+    .section { background: linear-gradient(145deg, #1c1430, #221840); border: 1px solid #3a2560; border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+    .section-title { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; color: #D30E8C; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #3a2560; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .stat-block { background: rgba(255,255,255,0.04); border: 1px solid #3a2560; border-radius: 10px; padding: 16px; text-align: center; }
+    .stat-value { font-size: 22px; font-weight: bold; color: #fff; font-family: monospace; }
+    .stat-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+    .ticket-box { background: rgba(211,14,140,0.08); border: 1px solid rgba(211,14,140,0.25); border-left: 4px solid #D30E8C; border-radius: 8px; padding: 16px 20px; font-size: 15px; color: #fff; line-height: 1.5; }
+    .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase; margin-right: 6px; margin-bottom: 6px; }
+    .badge-model { background: rgba(211,14,140,0.2); color: #fff; border: 1px solid ${modelColor}; }
+    .badge-complexity { background: rgba(240,165,0,0.2); color: #fff; border: 1px solid #f0a500; }
+    .badge-risk { background: rgba(239,68,68,0.2); color: #fff; border: 1px solid #ef4444; }
+    .badge-corrected { background: rgba(255,215,0,0.2); color: #ffd700; border: 1px solid #ffd700; }
+    .badge-auditor { background: rgba(255,140,0,0.2); color: #ffaa33; border: 1px solid #ff8c00; }
+    .reason-box { background: rgba(88,40,115,0.2); border: 1px solid rgba(155,111,212,0.3); border-left: 3px solid #9b6fd4; border-radius: 8px; padding: 14px 16px; font-size: 13px; color: #e0c8ff; line-height: 1.6; }
+    table { width: 100%; border-collapse: collapse; }
+    th { padding: 10px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #D30E8C; border-bottom: 1px solid #3a2560; }
+    .savings-highlight { font-size: 32px; font-weight: bold; color: #D30E8C; text-shadow: 0 0 20px rgba(211,14,140,0.4); }
+    .green { color: #4caf50; }
+    .pink { color: #D30E8C; }
+    .footer { text-align: center; padding: 24px; color: #555; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border-top: 1px solid #1e1030; margin-top: 24px; }
+    .footer span { color: #D30E8C; }
+    .dashboard-link { display: inline-block; margin-top: 12px; padding: 10px 24px; background: linear-gradient(135deg, #D30E8C, #b00a78); color: white; text-decoration: none; border-radius: 8px; font-size: 12px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="header">
+      <div class="header-left">
+        <h1>⚡ Project FuseBox</h1>
+        <p>Enterprise AI FinOps Platform — Incident Report</p>
+        <p style="color:#555;font-size:11px;margin-top:4px;">Team Token Burners — Insight Hackathon 2026</p>
+      </div>
+      <div class="header-right">
+        <div class="incident-id">${incidentId}</div>
+        <div class="incident-time">${timestamp}</div>
+        <div class="priority-badge">${priorityLabel}</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Trigger Ticket</div>
+      <div class="ticket-box">${prompt}</div>
+      <div style="margin-top:12px;">
+        <span class="badge badge-model">${model}</span>
+        <span class="badge badge-complexity">${complexity}</span>
+        <span class="badge badge-risk">${risk} risk</span>
+        ${selfCorrected ? '<span class="badge badge-corrected">⚡ Self-corrected</span>' : ''}
+        ${auditorOverride ? '<span class="badge badge-auditor">🔍 Auditor Override</span>' : ''}
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Anomaly Detection</div>
+      <div class="grid-3">
+        <div class="stat-block">
+          <div class="stat-value" style="color:#D30E8C;">${anomalyCount}</div>
+          <div class="stat-label">Similar Tickets Detected</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-value" style="color:#f0a500;">${ANOMALY_WINDOW_MINUTES} min</div>
+          <div class="stat-label">Detection Window</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-value" style="color:#ef4444;">${priorityLabel.split(' ')[0]}</div>
+          <div class="stat-label">Auto-Assigned Priority</div>
+        </div>
+      </div>
+      <div style="margin-top:16px;padding:14px 16px;background:rgba(211,14,140,0.08);border:1px solid rgba(211,14,140,0.2);border-radius:8px;font-size:13px;color:#e0c8ff;line-height:1.6;">
+        FuseBox detected ${anomalyCount} tickets of the same complexity pattern within ${ANOMALY_WINDOW_MINUTES} minutes. This pattern indicates a potential widespread incident. The ticket was automatically escalated to ${model} for advanced triage and this incident record was created autonomously without human intervention.
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Agent Classification Chain</div>
+      <div class="reason-box">${reason}</div>
+      <div style="margin-top:16px;">
+        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Confidence Score</div>
+        <div style="background:#2a1a45;border-radius:4px;height:10px;overflow:hidden;">
+          <div style="height:100%;width:${confidence}%;background:${confidence >= 75 ? 'linear-gradient(90deg,#4caf50,#66bb6a)' : 'linear-gradient(90deg,#ef4444,#ff6b6b)'};border-radius:4px;"></div>
+        </div>
+        <div style="font-size:12px;color:${confidence >= 75 ? '#4caf50' : '#ef4444'};margin-top:6px;font-weight:bold;">${confidence}% confidence</div>
+      </div>
+      ${auditorResult ? `
+      <div style="margin-top:16px;background:rgba(255,140,0,0.08);border:1px solid rgba(255,140,0,0.25);border-radius:8px;padding:14px 16px;">
+        <div style="font-size:10px;color:#ff8c00;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;font-weight:bold;">FuseBox-Auditor Decision</div>
+        <div style="font-size:13px;color:#ffcc88;line-height:1.5;">${auditorResult}</div>
+      </div>` : ''}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Cost Analysis</div>
+      <div class="grid-3">
+        <div class="stat-block">
+          <div class="stat-value">$${cost}</div>
+          <div class="stat-label">Actual Cost</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-value pink">$${savings !== "N/A" ? savings : "0.000000"}</div>
+          <div class="stat-label">Saved vs All-Kimi</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-value" style="color:#4caf50;">${totalTokens}</div>
+          <div class="stat-label">Tokens Used</div>
+        </div>
+      </div>
+      <div style="margin-top:16px;text-align:center;padding:20px;background:rgba(211,14,140,0.06);border:1px solid rgba(211,14,140,0.2);border-radius:10px;">
+        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Projected Annual Savings at 50,000 Tickets/Year</div>
+        <div class="savings-highlight">$${annualSavings}</div>
+        <div style="font-size:11px;color:#888;margin-top:6px;">based on current routing efficiency</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Knowledge Base Match</div>
+      ${kbSection}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Memory Context — Similar Past Tickets</div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Ticket</th>
+            <th>Complexity</th>
+            <th>Model</th>
+            <th>Confidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${memoryRows}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Recommended Actions</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-left:3px solid #ef4444;border-radius:8px;padding:12px 16px;">
+          <div style="font-size:12px;font-weight:bold;color:#ef4444;margin-bottom:4px;">IMMEDIATE — Investigate Pattern</div>
+          <div style="font-size:13px;color:#ddd;line-height:1.5;">Review all ${anomalyCount} tickets submitted in the last ${ANOMALY_WINDOW_MINUTES} minutes. Determine if this represents a widespread incident or coincidental volume spike.</div>
+        </div>
+        <div style="background:rgba(240,165,0,0.08);border:1px solid rgba(240,165,0,0.2);border-left:3px solid #f0a500;border-radius:8px;padding:12px 16px;">
+          <div style="font-size:12px;font-weight:bold;color:#f0a500;margin-bottom:4px;">SHORT TERM — Escalate if Confirmed</div>
+          <div style="font-size:13px;color:#ddd;line-height:1.5;">If the pattern is confirmed as a widespread incident, escalate to the appropriate team and open a P1 incident record in your ITSM system.</div>
+        </div>
+        <div style="background:rgba(79,147,217,0.08);border:1px solid rgba(79,147,217,0.2);border-left:3px solid #4F93D9;border-radius:8px;padding:12px 16px;">
+          <div style="font-size:12px;font-weight:bold;color:#4F93D9;margin-bottom:4px;">LONG TERM — Update Knowledge Base</div>
+          <div style="font-size:13px;color:#ddd;line-height:1.5;">FuseBox has automatically learned from this pattern. Future tickets matching this signature will be routed with higher confidence and faster escalation.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>Generated autonomously by <span>Project FuseBox</span> — Enterprise AI FinOps Platform</p>
+      <p style="margin-top:4px;">Team Token Burners — Insight Hackathon 2026</p>
+      <a href="https://polite-stone-0c7f55c10.7.azurestaticapps.net" class="dashboard-link">View Live Dashboard</a>
+    </div>
+
+  </div>
+</body>
+</html>`;
+}
+
+async function uploadReportToBlob(incidentId, htmlContent, context) {
+  try {
+    const filename = `${incidentId}-${Date.now()}.html`;
+    const url = `https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/fusebox-reports/${filename}?${BLOB_SAS_TOKEN}`;
+    const res = await fetch(url, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "text/html",
+        "x-ms-blob-type": "BlockBlob",
+        "x-ms-blob-content-type": "text/html"
+      },
+      body: htmlContent
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      context.log("Blob upload failed:", res.status, errText);
+      return null;
+    }
+    const reportUrl = `https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/fusebox-reports/${filename}?${BLOB_SAS_TOKEN}`;
+    context.log("Report uploaded successfully:", reportUrl);
+    return reportUrl;
+  } catch (e) {
+    context.log("Report upload exception:", e.message);
+    return null;
+  }
+}
+
 async function callFuseBoxAgent(prompt, knownIssueContext, memoryContext, context) {
   const memoryBlock = memoryContext.length > 0
     ? `\n\nMEMORY — SIMILAR PAST TICKETS:\n${memoryContext.map((m, i) => `- Ticket ${i + 1}: "${m.prompt}" was routed to ${m.model} (${m.complexity}, confidence: ${m.confidence || "unknown"})${m.selfCorrected ? " — self-corrected" : ""}. If this past ticket influenced your classification, you MUST explicitly reference it by its summary in your reason field.`).join("\n")}`
@@ -344,10 +580,7 @@ async function callTriageModel(model, prompt, context) {
       body: JSON.stringify({
         model,
         messages: [
-          {
-            role: "system",
-            content: "You are a helpful IT service desk assistant. Provide a brief triage summary and 3 recommended next steps. Be concise."
-          },
+          { role: "system", content: "You are a helpful IT service desk assistant. Provide a brief triage summary and 3 recommended next steps. Be concise." },
           { role: "user", content: prompt }
         ],
         max_tokens: 2000,
@@ -362,10 +595,7 @@ async function callTriageModel(model, prompt, context) {
   const response = await client.chat.completions.create({
     model,
     messages: [
-      {
-        role: "system",
-        content: "You are a helpful IT service desk assistant. Provide a brief triage summary and 3 recommended next steps. Be concise."
-      },
+      { role: "system", content: "You are a helpful IT service desk assistant. Provide a brief triage summary and 3 recommended next steps. Be concise." },
       { role: "user", content: prompt }
     ],
     max_tokens: 500,
@@ -482,7 +712,7 @@ app.http("route", {
       context.log("Low confidence escalation — new model:", model);
     }
 
-    // Step 6 — Auditor check (runs when confidence below 80)
+    // Step 6 — Auditor check
     let auditorResult = null;
     let auditorOverride = false;
     if (confidence < 80) {
@@ -521,18 +751,19 @@ app.http("route", {
     const cost = (totalTokens / 1000) * costPer1k;
     const premiumCost = (totalTokens / 1000) * PREMIUM_COST_PER_1K;
     const savings = model !== PREMIUM_MODEL ? premiumCost - cost : 0;
-
     const triageText = response?.choices?.[0]?.message?.content || response?.choices?.[0]?.message?.reasoning_content || "Triage response unavailable";
 
-    // Step 8 — Write to Cosmos DB FIRST so anomaly check sees this ticket
+    // Step 8 — Write to Cosmos DB FIRST
     await writeMemory({ prompt, complexity, model, risk, reason, selfCorrected, confidence });
     context.log("Memory written for ticket");
 
-    // Step 9 — Anomaly check AFTER write so count includes current ticket
+    // Step 9 — Anomaly check AFTER write
     const anomalyResult = await checkAnomaly(complexity);
     context.log("Anomaly check:", anomalyResult);
 
     let anomalyEscalated = false;
+    let reportUrl = null;
+
     if (anomalyResult.anomalyDetected && model !== PREMIUM_MODEL) {
       context.log("Anomaly detected — escalating to Kimi-K2.6");
       model = PREMIUM_MODEL;
@@ -540,13 +771,27 @@ app.http("route", {
       risk = "high";
       reason = `[Anomaly detected — ${anomalyResult.count} similar tickets in last ${ANOMALY_WINDOW_MINUTES} min] ${reason}`;
       anomalyEscalated = true;
+
+      const incidentId = `INC-${Date.now().toString().slice(-6)}`;
+      const timestamp = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+
+      const htmlReport = generateIncidentReportHTML(
+        incidentId, prompt, complexity, model, risk, reason,
+        confidence, anomalyResult.count, totalTokens,
+        cost.toFixed(6), savings > 0 ? savings.toFixed(6) : "N/A",
+        memoryContext, knownIssueContext, selfCorrected,
+        auditorResult, auditorOverride, timestamp
+      );
+
+      reportUrl = await uploadReportToBlob(incidentId, htmlReport, context);
+
       sendAlertEmail(
         "INCIDENT ALERT: FuseBox Anomaly Detected",
-        `FuseBox has detected a potential widespread incident.\n\n${anomalyResult.count} similar tickets submitted in the last ${ANOMALY_WINDOW_MINUTES} minutes.\n\nLatest ticket: ${prompt}\n\nAutomatically escalated to Kimi-K2.6 for advanced triage.\n\nReview the FuseBox dashboard immediately.`
+        `FuseBox has detected a potential widespread incident.\n\n${anomalyResult.count} similar tickets submitted in the last ${ANOMALY_WINDOW_MINUTES} minutes.\n\nLatest ticket: ${prompt}\n\nAutomatically escalated to Kimi-K2.6 for advanced triage.\n\n${reportUrl ? `Full incident report: ${reportUrl}` : ''}\n\nReview the FuseBox dashboard immediately.`
       ).catch(e => console.error("Anomaly alert email failed:", e.message));
     }
 
-    // Step 10 — KB auto-update if agent overrode KB recommendation
+    // Step 10 — KB auto-update
     if (knownIssueContext.matched) {
       const kbRecommendedModel = knownIssueContext.issues[0].severity === "high" ? PREMIUM_MODEL : MID_MODEL;
       if (model !== kbRecommendedModel) {
@@ -580,7 +825,8 @@ app.http("route", {
         anomalyCount: anomalyResult.count,
         confidenceEscalated: confidenceEscalated,
         auditorResult: auditorResult,
-        auditorOverride: auditorOverride
+        auditorOverride: auditorOverride,
+        reportUrl: reportUrl
       }
     };
   }
