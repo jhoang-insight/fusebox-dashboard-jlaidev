@@ -361,8 +361,8 @@ const PROMPTS = [
   },
 ];
 
-const BUDGET_LIMIT = 0.001;
-const ALERT_THRESHOLD = 0.0003;
+const BUDGET_LIMIT = 0.014;
+const ALERT_THRESHOLD = 0.0008;
 const PREMIUM_MODEL_COST = 0.007;
 const ANNUAL_TICKET_VOLUME = 50000;
 
@@ -480,6 +480,7 @@ function App() {
   const [auditorOverrideCount, setAuditorOverrideCount] = useState(0);
   const [anomalyCount, setAnomalyCount] = useState(0);
   const [incidentRecords, setIncidentRecords] = useState([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
   const intervalRef = useRef(null);
 
   useEffect(() => {
@@ -674,6 +675,8 @@ function App() {
           auditorResult: data.auditorResult,
           auditorOverride: data.auditorOverride,
           reportUrl: data.reportUrl || null,
+          ticketId: data.ticketId || null,
+          feedbackSubmitted: false,
         };
         return [newEntry, ...prev].slice(0, 20);
       });
@@ -699,6 +702,36 @@ function App() {
       console.error("Live route failed:", e);
     }
     setLiveLoading(false);
+  };
+
+  const handleFeedback = async (entryId, ticketId, status, reportUrl) => {
+    if (!ticketId) return;
+    setFeedbackLoading(true);
+    try {
+      await fetch(
+        "https://fusebox-api-burners.azurewebsites.net/api/feedback",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ticketId,
+            resolutionStatus: status,
+            resolutionNotes: `Marked ${status} via FuseBox dashboard`,
+            reportUrl: reportUrl || null,
+          }),
+        },
+      );
+      setLog((prev) =>
+        prev.map((e) =>
+          e.id === entryId
+            ? { ...e, feedbackSubmitted: true, feedbackStatus: status }
+            : e,
+        ),
+      );
+    } catch (err) {
+      console.error("Feedback failed:", err);
+    }
+    setFeedbackLoading(false);
   };
 
   const totalProcessed = cheapCount + midCount + premiumCount;
@@ -1008,6 +1041,75 @@ function App() {
                     </a>
                   )}
                 </div>
+                {entry.live &&
+                  entry.ticketId &&
+                  log.filter((e) => e.live)[0]?.id === entry.id && (
+                    <div className="feedback-bar">
+                      {entry.feedbackSubmitted ? (
+                        <span
+                          className={`feedback-confirmed feedback-${entry.feedbackStatus}`}
+                        >
+                          {entry.feedbackStatus === "resolved"
+                            ? "✓ Resolved"
+                            : entry.feedbackStatus === "escalated"
+                              ? "⬆ Escalated"
+                              : "✕ Failed"}{" "}
+                          — outcome written to memory
+                        </span>
+                      ) : (
+                        <>
+                          <span className="feedback-label">
+                            Resolution outcome:
+                          </span>
+                          <button
+                            className="btn-feedback btn-feedback-resolved"
+                            onClick={() =>
+                              handleFeedback(
+                                entry.id,
+                                entry.ticketId,
+                                "resolved",
+                                entry.reportUrl,
+                              )
+                            }
+                            disabled={feedbackLoading}
+                            title="Mark this ticket as successfully resolved — outcome written to FuseBox memory"
+                          >
+                            ✓ Resolved
+                          </button>
+                          <button
+                            className="btn-feedback btn-feedback-escalated"
+                            onClick={() =>
+                              handleFeedback(
+                                entry.id,
+                                entry.ticketId,
+                                "escalated",
+                                entry.reportUrl,
+                              )
+                            }
+                            disabled={feedbackLoading}
+                            title="Mark this ticket as escalated to a higher tier — outcome written to FuseBox memory"
+                          >
+                            ⬆ Escalated
+                          </button>
+                          <button
+                            className="btn-feedback btn-feedback-failed"
+                            onClick={() =>
+                              handleFeedback(
+                                entry.id,
+                                entry.ticketId,
+                                "failed",
+                                entry.reportUrl,
+                              )
+                            }
+                            disabled={feedbackLoading}
+                            title="Mark this ticket as failed to resolve — outcome written to FuseBox memory"
+                          >
+                            ✕ Failed
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
               </div>
             ))}
           </div>
@@ -1246,9 +1348,10 @@ function App() {
             <div className="status-list">
               <div className="status-row">
                 <span className="status-dot dot-online"></span>
-                <span className="status-name">FuseBox Agent</span>
-                <span className="status-tag">Foundry v3</span>
+                <span className="status-name">Knowledge Base</span>
+                <span className="status-tag">File Search</span>
               </div>
+
               <div className="status-row">
                 <span className="status-dot dot-online"></span>
                 <span className="status-name">FuseBox-Auditor</span>
