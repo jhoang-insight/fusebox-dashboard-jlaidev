@@ -624,6 +624,7 @@ body {
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid #3a2560;
+  row-gap: 8px;
 }
 
 .log-footer > span:not([class]) {
@@ -643,6 +644,10 @@ body {
   border: 1px solid;
   white-space: nowrap;
   color: #fff;
+}
+
+.confidence-badge {
+  flex-shrink: 0;
 }
 
 .confidence-high {
@@ -1572,12 +1577,12 @@ body {
 /* EXPAND BUTTON */
 .expand-btn {
   margin-left: auto;
-  background: transparent;
-  border: 1px solid #3a2560;
-  color: #a78bca;
+  background: rgba(211, 14, 140, 0.15);
+  border: 1px solid #d30e8c;
+  color: #d30e8c;
   font-size: 14px;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 6px;
   cursor: pointer;
   display: flex;
@@ -1586,12 +1591,15 @@ body {
   flex-shrink: 0;
   transition: all 0.2s;
   line-height: 1;
+  box-shadow: 0 0 8px rgba(211, 14, 140, 0.3);
 }
 
 .expand-btn:hover {
   border-color: #d30e8c;
   color: #d30e8c;
   background: rgba(211, 14, 140, 0.1);
+  box-shadow: 0 0 16px rgba(211, 14, 140, 0.55);
+  transform: scale(1.1);
 }
 
 /* MODAL OVERLAY */
