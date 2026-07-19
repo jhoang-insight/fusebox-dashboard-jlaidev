@@ -468,10 +468,14 @@ function App() {
                     <span className="correction-badge">⬆ Confidence escalated</span>
                   )}
                   {entry.auditorResult && (
-                    <span className={`auditor-badge ${entry.auditorOverride ? 'auditor-override' : 'auditor-confirmed'}`}>
-                      🔍 Auditor: {entry.auditorOverride ? `Override — ${entry.auditorResult}` : 'Confirmed'}
-                    </span>
-                  )}
+  <span
+    className={`auditor-badge ${entry.auditorOverride ? 'auditor-override' : 'auditor-confirmed'}`}
+    title={entry.auditorOverride ? `Auditor Override: ${entry.auditorResult}` : `Auditor Confirmed: ${entry.auditorResult}`}
+  >
+    🔍 {entry.auditorOverride ? 'Auditor Override' : 'Auditor Confirmed'}
+  </span>
+)}
+
                 </div>
               </div>
             ))}

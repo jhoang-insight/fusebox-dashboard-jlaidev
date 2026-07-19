@@ -146,7 +146,7 @@ async function writeMemory(entry) {
   try {
     const container = getCosmosContainer();
     await container.items.upsert({
-      id: `ticket-${Date.now()}`,
+      id: `ticket-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       prompt: entry.prompt,
       complexity: entry.complexity,
       model: entry.model,
@@ -467,27 +467,9 @@ app.http("route", {
 
     let { complexity, risk, model, reason, selfCorrected, confidence } = classification;
 
-    // Step 5 — Anomaly check using actual classified complexity
-    const anomalyResult = await checkAnomaly(complexity);
-    context.log("Anomaly check:", anomalyResult);
-
-    let anomalyEscalated = false;
-    if (anomalyResult.anomalyDetected && model !== PREMIUM_MODEL) {
-      context.log("Anomaly detected — escalating to Kimi-K2.6");
-      model = PREMIUM_MODEL;
-      complexity = "complex";
-      risk = "high";
-      reason = `[Anomaly detected — ${anomalyResult.count} similar tickets in last ${ANOMALY_WINDOW_MINUTES} min] ${reason}`;
-      anomalyEscalated = true;
-      sendAlertEmail(
-        "INCIDENT ALERT: FuseBox Anomaly Detected",
-        `FuseBox has detected a potential widespread incident.\n\n${anomalyResult.count} similar ${complexity} tickets submitted in the last ${ANOMALY_WINDOW_MINUTES} minutes.\n\nLatest ticket: ${prompt}\n\nAutomatically escalated to Kimi-K2.6 for advanced triage.\n\nReview the FuseBox dashboard immediately.`
-      ).catch(e => console.error("Anomaly alert email failed:", e.message));
-    }
-
-    // Step 6 — Confidence escalation
+    // Step 5 — Confidence escalation
     let confidenceEscalated = false;
-    if (confidence < CONFIDENCE_THRESHOLD && !anomalyEscalated) {
+    if (confidence < CONFIDENCE_THRESHOLD) {
       if (model === CHEAP_MODEL) {
         model = MID_MODEL;
         confidenceEscalated = true;
@@ -500,10 +482,10 @@ app.http("route", {
       context.log("Low confidence escalation — new model:", model);
     }
 
-    // Step 7 — Auditor check (runs when confidence below 80 — additive, never blocks)
+    // Step 6 — Auditor check (runs when confidence below 80)
     let auditorResult = null;
     let auditorOverride = false;
-    if (confidence < 80 && !anomalyEscalated) {
+    if (confidence < 80) {
       const auditorResponse = await callAuditor(prompt, { complexity, model, confidence, reason }, context);
       if (auditorResponse) {
         auditorResult = auditorResponse.verdict === "override"
@@ -526,7 +508,7 @@ app.http("route", {
     else if (model === MID_MODEL) costPer1k = MID_COST_PER_1K;
     else costPer1k = PREMIUM_COST_PER_1K;
 
-    // Step 8 — Triage response
+    // Step 7 — Triage response
     let response;
     try {
       response = await callTriageModel(model, prompt, context);
@@ -542,10 +524,27 @@ app.http("route", {
 
     const triageText = response?.choices?.[0]?.message?.content || response?.choices?.[0]?.message?.reasoning_content || "Triage response unavailable";
 
-    // Step 9 — Write to Cosmos DB memory
-    writeMemory({ prompt, complexity, model, risk, reason, selfCorrected, confidence }).catch(e =>
-      context.log("Memory write failed:", e.message)
-    );
+    // Step 8 — Write to Cosmos DB FIRST so anomaly check sees this ticket
+    await writeMemory({ prompt, complexity, model, risk, reason, selfCorrected, confidence });
+    context.log("Memory written for ticket");
+
+    // Step 9 — Anomaly check AFTER write so count includes current ticket
+    const anomalyResult = await checkAnomaly(complexity);
+    context.log("Anomaly check:", anomalyResult);
+
+    let anomalyEscalated = false;
+    if (anomalyResult.anomalyDetected && model !== PREMIUM_MODEL) {
+      context.log("Anomaly detected — escalating to Kimi-K2.6");
+      model = PREMIUM_MODEL;
+      complexity = "complex";
+      risk = "high";
+      reason = `[Anomaly detected — ${anomalyResult.count} similar tickets in last ${ANOMALY_WINDOW_MINUTES} min] ${reason}`;
+      anomalyEscalated = true;
+      sendAlertEmail(
+        "INCIDENT ALERT: FuseBox Anomaly Detected",
+        `FuseBox has detected a potential widespread incident.\n\n${anomalyResult.count} similar tickets submitted in the last ${ANOMALY_WINDOW_MINUTES} minutes.\n\nLatest ticket: ${prompt}\n\nAutomatically escalated to Kimi-K2.6 for advanced triage.\n\nReview the FuseBox dashboard immediately.`
+      ).catch(e => console.error("Anomaly alert email failed:", e.message));
+    }
 
     // Step 10 — KB auto-update if agent overrode KB recommendation
     if (knownIssueContext.matched) {
