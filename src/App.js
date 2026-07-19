@@ -83,7 +83,7 @@ function generateCSV(log, totalCost, totalSavings, cheapCount, midCount, premium
 }
 
 function App() {
-  const [unlocked, setUnlocked] = useState(false);
+  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem('fb_unlocked') === 'true');
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState(false);
   const [log, setLog] = useState([]);
@@ -101,6 +101,10 @@ function App() {
   const [livePrompt, setLivePrompt] = useState('');
   const [liveLoading, setLiveLoading] = useState(false);
   const [emailSent, setEmailSent] = useState({ threshold: false, exceeded: false });
+  const [selfCorrectionCount, setSelfCorrectionCount] = useState(0);
+  const [memoryHitCount, setMemoryHitCount] = useState(0);
+  const [auditorOverrideCount, setAuditorOverrideCount] = useState(0);
+  const [anomalyCount, setAnomalyCount] = useState(0);
   const intervalRef = useRef(null);
 
   useEffect(() => {
@@ -207,11 +211,16 @@ function App() {
     setPremiumCost(0);
     setLivePrompt('');
     setEmailSent({ threshold: false, exceeded: false });
+    setSelfCorrectionCount(0);
+    setMemoryHitCount(0);
+    setAuditorOverrideCount(0);
+    setAnomalyCount(0);
   };
 
   const handleUnlock = () => {
     if (passwordInput === DEMO_PASSWORD) {
       setUnlocked(true);
+      sessionStorage.setItem('fb_unlocked', 'true');
       setPasswordError(false);
     } else {
       setPasswordError(true);
@@ -229,6 +238,10 @@ function App() {
         body: JSON.stringify({ prompt: livePrompt }),
       });
       const data = await res.json();
+      if (data.selfCorrected) setSelfCorrectionCount(prev => prev + 1);
+      if (data.memoryUsed && data.memoryUsed !== 'No memory context yet') setMemoryHitCount(prev => prev + 1);
+      if (data.auditorOverride) setAuditorOverrideCount(prev => prev + 1);
+      if (data.anomalyDetected) setAnomalyCount(prev => prev + 1);
       setLog(prev => {
         const newEntry = {
           id: Date.now(),
@@ -283,13 +296,14 @@ function App() {
   const optimizationRate = totalProcessed > 0 ? Math.round(((cheapCount + midCount) / totalProcessed) * 100) : 0;
   const costReduction = (totalCost + totalSavings) > 0 ? ((totalSavings / (totalCost + totalSavings)) * 100).toFixed(1) : 0;
   const budgetPct = Math.min((totalCost / BUDGET_LIMIT) * 100, 100).toFixed(0);
+  const liveCount = log.filter(e => e.live).length;
 
   if (!unlocked) {
     return (
       <div className="gate-screen">
         <div className="gate-card">
-          <div className="gate-coin">
-            <span className="gate-coin-label">FB</span>
+          <div className="gate-logo-wrap">
+            <img src="/fusebox-logo-192.png" alt="FuseBox Logo" className="gate-logo-img" />
           </div>
           <h1 className="gate-title">Project FuseBox</h1>
           <p className="gate-subtitle">Enterprise AI FinOps Platform</p>
@@ -317,8 +331,13 @@ function App() {
       <div className="fixed-panel">
         <header className="header">
           <div className="header-left">
-            <h1 className="title">Project FuseBox</h1>
-            <span className="subtitle">Enterprise AI FinOps Platform</span>
+            <div className="header-logo-row">
+              <img src="/fusebox-logo-192.png" alt="FuseBox" className="header-logo-img" />
+              <div className="header-title-block">
+                <h1 className="title">Project FuseBox</h1>
+                <span className="subtitle">Enterprise AI FinOps Platform</span>
+              </div>
+            </div>
           </div>
           <div className="header-right">
             <div className="metric-box">
@@ -370,94 +389,11 @@ function App() {
         {liveLoading && (
           <div className="flame-container">
             <div className="token-flame">
-              <div className="token-coin">
-                <span className="token-coin-label">FB</span>
-              </div>
+              <img src="/fusebox-logo-192.png" alt="Routing" className="flame-logo-img" />
             </div>
             <span className="flame-text">FuseBox Routing...</span>
           </div>
         )}
-
-        <div className="comparison-container">
-          <div className="comparison-cards">
-            <div className="comparison-card cheap">
-              <span className="comparison-card-title">Phi-4-mini</span>
-              <span className="comparison-card-label">Simple — Lowest Cost</span>
-              <span className="comparison-card-cost">{formatCost(cheapCost)}</span>
-              <span className="comparison-card-requests">{cheapCount} requests</span>
-            </div>
-            <div className="comparison-card mid">
-              <span className="comparison-card-title">DeepSeek-V4-Flash</span>
-              <span className="comparison-card-label">Medium — Mid Cost</span>
-              <span className="comparison-card-cost">{formatCost(midCost)}</span>
-              <span className="comparison-card-requests">{midCount} requests</span>
-            </div>
-            <div className="comparison-card expensive">
-              <span className="comparison-card-title">Kimi-K2.6</span>
-              <span className="comparison-card-label">Complex — Highest Cost</span>
-              <span className="comparison-card-cost">{formatCost(premiumCost)}</span>
-              <span className="comparison-card-requests">{premiumCount} requests</span>
-            </div>
-            <div className="comparison-card baseline">
-              <span className="comparison-card-title">No Optimization</span>
-              <span className="comparison-card-label">If All Kimi-K2.6</span>
-              <span className="comparison-card-cost">{formatCost(totalCost + totalSavings)}</span>
-              <span className="comparison-card-requests">estimated</span>
-            </div>
-            <div className="comparison-card savings-card">
-              <span className="comparison-card-title">You Saved</span>
-              <span className="comparison-card-label">Total Savings</span>
-              <span className="comparison-card-cost">{formatCost(totalSavings)}</span>
-              <span className="comparison-card-requests">by smart routing</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="summary-bar">
-          <div className="summary-item">
-            <span className="summary-value">{totalProcessed}</span>
-            <span className="summary-label">Processed</span>
-          </div>
-          <div className="summary-item">
-            <span className="summary-value">{cheapCount}</span>
-            <span className="summary-label">Phi Routes</span>
-          </div>
-          <div className="summary-item">
-            <span className="summary-value">{midCount}</span>
-            <span className="summary-label">DeepSeek Routes</span>
-          </div>
-          <div className="summary-item">
-            <span className="summary-value">{premiumCount}</span>
-            <span className="summary-label">Kimi Routes</span>
-          </div>
-          <div className="summary-item highlight">
-            <span className="summary-value">{optimizationRate}%</span>
-            <span className="summary-label">Optimized</span>
-          </div>
-          <div className="summary-item highlight">
-            <span className="summary-value">{costReduction}%</span>
-            <span className="summary-label">Cost Reduction</span>
-          </div>
-          <div className="summary-item highlight">
-            <span className="summary-value">{budgetPct}%</span>
-            <span className="summary-label">Budget Used</span>
-          </div>
-        </div>
-
-        <div className="legend">
-          <div className="legend-item">
-            <span className="legend-bar simple"></span>
-            <span className="legend-label">Simple — Phi-4-mini — Lowest Cost</span>
-          </div>
-          <div className="legend-item">
-            <span className="legend-bar medium"></span>
-            <span className="legend-label">Medium — DeepSeek-V4-Flash — Mid Cost</span>
-          </div>
-          <div className="legend-item">
-            <span className="legend-bar complex"></span>
-            <span className="legend-label">Complex — Kimi-K2.6 — Highest Cost</span>
-          </div>
-        </div>
 
         <div className="log-header-bar">
           <h2 className="section-title">Live Routing Decisions</h2>
@@ -471,62 +407,248 @@ function App() {
         </div>
       </div>
 
-      <div className="scroll-panel">
-        {log.length === 0 && (
-          <p className="empty-state">Press Run Demo or submit a live ticket to begin</p>
-        )}
-        <div className="log-list">
-          {log.map(entry => (
-            <div key={entry.id} className={`log-entry ${entry.complexity}`}>
-              <div className="log-header">
-                <span className="log-time">{entry.timestamp}</span>
-                {entry.live && <span className="badge live-badge">LIVE</span>}
-                <span className={`badge ${entry.model === 'phi-4-mini' ? 'badge-cheap' : entry.model === 'DeepSeek-V4-Flash' ? 'badge-mid' : 'badge-expensive'}`}>
-                  {entry.model}
-                </span>
-                <span className={`badge complexity-${entry.complexity}`}>{entry.complexity}</span>
-                <span className={`badge risk-${entry.risk}`}>{entry.risk} risk</span>
-              </div>
-              <p className="log-prompt">
-                <span className="prompt-label">Prompt: </span>{entry.prompt}
-              </p>
-              {(entry.aiResponse || entry.reason) && (
-                <div className="ai-response">
-                  <span className="ai-response-label">AI Triage Response</span>
-                  {entry.reason && <p className="ai-reason">Routing reason: {entry.reason}</p>}
-                  {entry.knowledgeBase && <p className="ai-reason">Knowledge base: {entry.knowledgeBase}</p>}
-                  {entry.aiResponse && <p className="ai-response-text">{entry.aiResponse.replace(/[#*`_~]/g, '').trim()}</p>}
+      <div className="main-layout">
+
+        <div className="cards-panel">
+          {log.length === 0 && (
+            <p className="empty-state">Press Run Demo or submit a live ticket to begin</p>
+          )}
+          <div className="log-list">
+            {log.map(entry => (
+              <div key={entry.id} className={`log-entry ${entry.complexity}`}>
+                <div className="log-header">
+                  <span className="log-time">{entry.timestamp}</span>
+                  {entry.live && <span className="badge live-badge">LIVE</span>}
+                  <span className={`badge ${entry.model === 'phi-4-mini' ? 'badge-cheap' : entry.model === 'DeepSeek-V4-Flash' ? 'badge-mid' : 'badge-expensive'}`}>
+                    {entry.model}
+                  </span>
+                  <span className={`badge complexity-${entry.complexity}`}>{entry.complexity}</span>
+                  <span className={`badge risk-${entry.risk}`}>{entry.risk} risk</span>
                 </div>
-              )}
-              <div className="log-footer">
-                <span>Tokens: {entry.tokens}</span>
-                <span>Cost: ${entry.cost}</span>
-                <span>Savings: {entry.savings === 'N/A' ? 'N/A' : `$${entry.savings}`}</span>
-                {entry.confidence > 0 && (
-                  <span className={`confidence-badge ${entry.confidence >= 75 ? 'confidence-high' : 'confidence-low'}`}>
-                    {entry.confidence}% confidence
-                  </span>
+                <p className="log-prompt">
+                  <span className="prompt-label">Prompt: </span>{entry.prompt}
+                </p>
+                {(entry.aiResponse || entry.reason) && (
+                  <div className="ai-response">
+                    <span className="ai-response-label">AI Triage Response</span>
+                    {entry.reason && <p className="ai-reason">Routing reason: {entry.reason}</p>}
+                    {entry.knowledgeBase && <p className="ai-reason">Knowledge base: {entry.knowledgeBase}</p>}
+                    {entry.aiResponse && <p className="ai-response-text">{entry.aiResponse.replace(/[#*`_~]/g, '').trim()}</p>}
+                  </div>
                 )}
-                {entry.memoryUsed && entry.memoryUsed !== 'No memory context yet' && (
-                  <span className="memory-badge">🧠 {entry.memoryUsed}</span>
-                )}
-                {entry.selfCorrected && (
-                  <span className="correction-badge">⚡ Self-corrected</span>
-                )}
-                {entry.anomalyDetected && (
-                  <span className="anomaly-badge">🚨 Anomaly — {entry.anomalyCount} similar tickets</span>
-                )}
-                {entry.confidenceEscalated && (
-                  <span className="correction-badge">⬆ Confidence escalated</span>
-                )}
-                {entry.auditorResult && (
-                  <span className={`auditor-badge ${entry.auditorOverride ? 'auditor-override' : 'auditor-confirmed'}`}>
-                    🔍 Auditor: {entry.auditorOverride ? `Override — ${entry.auditorResult}` : 'Confirmed'}
-                  </span>
-                )}
+                <div className="log-footer">
+                  <span>Tokens: {entry.tokens}</span>
+                  <span>Cost: ${entry.cost}</span>
+                  <span>Savings: {entry.savings === 'N/A' ? 'N/A' : `$${entry.savings}`}</span>
+                  {entry.confidence > 0 && (
+                    <span className={`confidence-badge ${entry.confidence >= 75 ? 'confidence-high' : 'confidence-low'}`}>
+                      {entry.confidence}% confidence
+                    </span>
+                  )}
+                  {entry.memoryUsed && entry.memoryUsed !== 'No memory context yet' && (
+                    <span className="memory-badge">🧠 {entry.memoryUsed}</span>
+                  )}
+                  {entry.selfCorrected && (
+                    <span className="correction-badge">⚡ Self-corrected</span>
+                  )}
+                  {entry.anomalyDetected && (
+                    <span className="anomaly-badge">🚨 Anomaly — {entry.anomalyCount} similar tickets</span>
+                  )}
+                  {entry.confidenceEscalated && (
+                    <span className="correction-badge">⬆ Confidence escalated</span>
+                  )}
+                  {entry.auditorResult && (
+                    <span className={`auditor-badge ${entry.auditorOverride ? 'auditor-override' : 'auditor-confirmed'}`}>
+                      🔍 Auditor: {entry.auditorOverride ? `Override — ${entry.auditorResult}` : 'Confirmed'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="sidebar">
+
+          <div className="sidebar-card">
+            <div className="sidebar-card-title">Budget Meter</div>
+            <div className="budget-meter-track">
+              <div
+                className={`budget-meter-fill ${parseFloat(budgetPct) >= 100 ? 'fill-exceeded' : parseFloat(budgetPct) >= 30 ? 'fill-warning' : 'fill-ok'}`}
+                style={{ width: `${budgetPct}%` }}
+              />
+            </div>
+            <div className="budget-meter-labels">
+              <span className="budget-meter-pct">{budgetPct}% used</span>
+              <span className="budget-meter-limit">Limit: ${BUDGET_LIMIT.toFixed(4)}</span>
+            </div>
+            <div className="budget-meter-values">
+              <div className="budget-val-block">
+                <span className="budget-val">{formatCost(totalCost)}</span>
+                <span className="budget-val-label">Spent</span>
+              </div>
+              <div className="budget-val-block">
+                <span className="budget-val savings-val">{formatCost(totalSavings)}</span>
+                <span className="budget-val-label">Saved</span>
+              </div>
+              <div className="budget-val-block">
+                <span className="budget-val">{costReduction}%</span>
+                <span className="budget-val-label">Reduction</span>
               </div>
             </div>
-          ))}
+          </div>
+
+          <div className="sidebar-card">
+            <div className="sidebar-card-title">Model Distribution</div>
+            <div className="model-dist">
+              <div className="model-dist-row">
+                <div className="model-dist-info">
+                  <span className="model-dist-dot dot-cheap"></span>
+                  <span className="model-dist-name">Phi-4-mini</span>
+                  <span className="model-dist-label">Simple</span>
+                </div>
+                <div className="model-dist-right">
+                  <div className="model-dist-bar-track">
+                    <div className="model-dist-bar bar-cheap" style={{ width: totalProcessed > 0 ? `${(cheapCount / totalProcessed) * 100}%` : '0%' }} />
+                  </div>
+                  <span className="model-dist-count">{cheapCount}</span>
+                </div>
+              </div>
+              <div className="model-dist-row">
+                <div className="model-dist-info">
+                  <span className="model-dist-dot dot-mid"></span>
+                  <span className="model-dist-name">DeepSeek</span>
+                  <span className="model-dist-label">Medium</span>
+                </div>
+                <div className="model-dist-right">
+                  <div className="model-dist-bar-track">
+                    <div className="model-dist-bar bar-mid" style={{ width: totalProcessed > 0 ? `${(midCount / totalProcessed) * 100}%` : '0%' }} />
+                  </div>
+                  <span className="model-dist-count">{midCount}</span>
+                </div>
+              </div>
+              <div className="model-dist-row">
+                <div className="model-dist-info">
+                  <span className="model-dist-dot dot-premium"></span>
+                  <span className="model-dist-name">Kimi-K2.6</span>
+                  <span className="model-dist-label">Complex</span>
+                </div>
+                <div className="model-dist-right">
+                  <div className="model-dist-bar-track">
+                    <div className="model-dist-bar bar-premium" style={{ width: totalProcessed > 0 ? `${(premiumCount / totalProcessed) * 100}%` : '0%' }} />
+                  </div>
+                  <span className="model-dist-count">{premiumCount}</span>
+                </div>
+              </div>
+            </div>
+            <div className="optimization-pill">
+              <span className="optimization-pill-value">{optimizationRate}%</span>
+              <span className="optimization-pill-label">of tickets optimized away from Kimi</span>
+            </div>
+          </div>
+
+          <div className="sidebar-card">
+            <div className="sidebar-card-title">Agentic Intelligence</div>
+            <div className="intel-grid">
+              <div className="intel-item">
+                <span className="intel-icon">⚡</span>
+                <span className="intel-value">{selfCorrectionCount}</span>
+                <span className="intel-label">Self-Corrections</span>
+              </div>
+              <div className="intel-item">
+                <span className="intel-icon">🧠</span>
+                <span className="intel-value">{memoryHitCount}</span>
+                <span className="intel-label">Memory Hits</span>
+              </div>
+              <div className="intel-item">
+                <span className="intel-icon">🔍</span>
+                <span className="intel-value">{auditorOverrideCount}</span>
+                <span className="intel-label">Auditor Overrides</span>
+              </div>
+              <div className="intel-item">
+                <span className="intel-icon">🚨</span>
+                <span className="intel-value">{anomalyCount}</span>
+                <span className="intel-label">Anomalies</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="sidebar-card">
+            <div className="sidebar-card-title">System Status</div>
+            <div className="status-list">
+              <div className="status-row">
+                <span className="status-dot dot-online"></span>
+                <span className="status-name">FuseBox Agent</span>
+                <span className="status-tag">Foundry v3</span>
+              </div>
+              <div className="status-row">
+                <span className="status-dot dot-online"></span>
+                <span className="status-name">FuseBox-Auditor</span>
+                <span className="status-tag">DeepSeek</span>
+              </div>
+              <div className="status-row">
+                <span className="status-dot dot-online"></span>
+                <span className="status-name">Phi-4-mini</span>
+                <span className="status-tag">Simple</span>
+              </div>
+              <div className="status-row">
+                <span className="status-dot dot-online"></span>
+                <span className="status-name">DeepSeek-V4-Flash</span>
+                <span className="status-tag">Medium</span>
+              </div>
+              <div className="status-row">
+                <span className="status-dot dot-online"></span>
+                <span className="status-name">Kimi-K2.6</span>
+                <span className="status-tag">Complex</span>
+              </div>
+              <div className="status-row">
+                <span className="status-dot dot-online"></span>
+                <span className="status-name">Cosmos DB Memory</span>
+                <span className="status-tag">Active</span>
+              </div>
+              <div className="status-row">
+                <span className="status-dot dot-online"></span>
+                <span className="status-name">Knowledge Base</span>
+                <span className="status-tag">Blob Storage</span>
+              </div>
+              <div className="status-row">
+                <span className="status-dot dot-online"></span>
+                <span className="status-name">Email Alerts</span>
+                <span className="status-tag">ACS Live</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="sidebar-card">
+            <div className="sidebar-card-title">Session Stats</div>
+            <div className="session-stats">
+              <div className="session-stat-row">
+                <span className="session-stat-label">Total Processed</span>
+                <span className="session-stat-value">{totalProcessed}</span>
+              </div>
+              <div className="session-stat-row">
+                <span className="session-stat-label">Live Submissions</span>
+                <span className="session-stat-value">{liveCount}</span>
+              </div>
+              <div className="session-stat-row">
+                <span className="session-stat-label">Avg Cost / Ticket</span>
+                <span className="session-stat-value">{totalProcessed > 0 ? formatCost(totalCost / totalProcessed) : '$0.000000'}</span>
+              </div>
+              <div className="session-stat-row">
+                <span className="session-stat-label">Cost if All Kimi</span>
+                <span className="session-stat-value">{formatCost(totalCost + totalSavings)}</span>
+              </div>
+              <div className="session-stat-row">
+                <span className="session-stat-label">Actual Cost</span>
+                <span className="session-stat-value highlight-green">{formatCost(totalCost)}</span>
+              </div>
+              <div className="session-stat-row">
+                <span className="session-stat-label">Total Saved</span>
+                <span className="session-stat-value highlight-pink">{formatCost(totalSavings)}</span>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
