@@ -251,6 +251,7 @@ function App() {
           model: data.model,
           anomalyCount: data.anomalyCount,
           priority: data.complexity === 'complex' ? 'P1' : data.complexity === 'medium' ? 'P2' : 'P3',
+          reportUrl: data.reportUrl || null,
         };
         setIncidentRecords(prev => [newIncident, ...prev].slice(0, 5));
       }
@@ -277,6 +278,7 @@ function App() {
           confidenceEscalated: data.confidenceEscalated,
           auditorResult: data.auditorResult,
           auditorOverride: data.auditorOverride,
+          reportUrl: data.reportUrl || null,
         };
         return [newEntry, ...prev].slice(0, 20);
       });
@@ -339,6 +341,7 @@ function App() {
   return (
     <div className="app">
       <div className="fixed-panel">
+
         <header className="header">
           <div className="header-left">
             <div className="header-logo-row">
@@ -349,18 +352,25 @@ function App() {
               </div>
             </div>
           </div>
-          <div className="header-right">
-            <div className="metric-box">
-              <span className="metric-label">Total Spend</span>
-              <span className="metric-value">{formatCost(totalCost)}</span>
+          <div className="header-stats">
+            <div className="header-stat-item">
+              <span className="header-stat-label">Processed</span>
+              <span className="header-stat-value">{totalProcessed}</span>
             </div>
-            <div className="metric-box savings">
-              <span className="metric-label">Total Savings</span>
-              <span className="metric-value">{formatCost(totalSavings)}</span>
+            <div className="header-stat-divider" />
+            <div className="header-stat-item">
+              <span className="header-stat-label">Optimized</span>
+              <span className="header-stat-value highlight-pink">{optimizationRate}%</span>
             </div>
-            <div className="metric-box smart">
-              <span className="metric-label">Smart Routes</span>
-              <span className="metric-value">{cheapCount + midCount} of {totalProcessed}</span>
+            <div className="header-stat-divider" />
+            <div className="header-stat-item">
+              <span className="header-stat-label">Cost Reduction</span>
+              <span className="header-stat-value highlight-green">{costReduction}%</span>
+            </div>
+            <div className="header-stat-divider" />
+            <div className="header-stat-item">
+              <span className="header-stat-label">Smart Routes</span>
+              <span className="header-stat-value">{cheapCount + midCount} of {totalProcessed}</span>
             </div>
           </div>
         </header>
@@ -468,15 +478,14 @@ function App() {
                     <span className="correction-badge">⬆ Confidence escalated</span>
                   )}
                   {entry.auditorResult && (
-  <span
-    className={`auditor-badge ${entry.auditorOverride ? 'auditor-override' : 'auditor-confirmed'}`}
-    title={entry.auditorOverride ? `Auditor Override: ${entry.auditorResult}` : `Auditor Confirmed: ${entry.auditorResult}`}
-  >
-    🔍 {entry.auditorOverride ? 'Auditor Override' : 'Auditor Confirmed'}
-  </span>
-)}
-
-{entry.reportUrl && (
+                    <span
+                      className={`auditor-badge ${entry.auditorOverride ? 'auditor-override' : 'auditor-confirmed'}`}
+                      title={entry.auditorOverride ? `Auditor Override: ${entry.auditorResult}` : `Auditor Confirmed: ${entry.auditorResult}`}
+                    >
+                      🔍 {entry.auditorOverride ? 'Auditor Override' : 'Auditor Confirmed'}
+                    </span>
+                  )}
+                  {entry.reportUrl && (
                     <a
                       href={entry.reportUrl}
                       target="_blank"
@@ -486,7 +495,6 @@ function App() {
                       📄 View Full Incident Report
                     </a>
                   )}
-
                 </div>
               </div>
             ))}
@@ -633,6 +641,11 @@ function App() {
                     </div>
                     <p className="incident-prompt">{inc.prompt.slice(0, 60)}{inc.prompt.length > 60 ? '...' : ''}</p>
                     <p className="incident-meta">{inc.anomalyCount} similar tickets detected — auto-escalated to {inc.model}</p>
+                    {inc.reportUrl && (
+                      <a href={inc.reportUrl} target="_blank" rel="noopener noreferrer" className="report-link" style={{ marginTop: '8px', display: 'inline-block' }}>
+                        📄 View Incident Report
+                      </a>
+                    )}
                   </div>
                 ))}
               </div>
