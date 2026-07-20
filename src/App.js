@@ -681,17 +681,6 @@ function App() {
                           </span>
                         </div>
                         <div className="feedback-buttons-row">
-                          {entry.reportUrl && (
-                            <a
-                              href={entry.reportUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="report-link"
-                              style={{ marginRight: "4px" }}
-                            >
-                              📄 View Incident Report
-                            </a>
-                          )}
                           <button
                             className="btn-feedback btn-feedback-resolved"
                             onClick={() =>
@@ -1334,17 +1323,6 @@ function App() {
                         </span>
                       </div>
                       <div className="feedback-buttons-row">
-                        {expandedEntry.reportUrl && (
-                          <a
-                            href={expandedEntry.reportUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="report-link"
-                            style={{ marginRight: "4px" }}
-                          >
-                            📄 View Incident Report
-                          </a>
-                        )}
                         <button
                           className="btn-feedback btn-feedback-resolved"
                           onClick={() => {
