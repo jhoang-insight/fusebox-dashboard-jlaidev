@@ -1068,10 +1068,36 @@ app.http("route", {
             confidence: 80,
           };
         } else {
+          const promptLower = prompt.toLowerCase();
+          const isSimple =
+            promptLower.includes("password") ||
+            promptLower.includes("locked out") ||
+            promptLower.includes("forgot") ||
+            promptLower.includes("reset password") ||
+            promptLower.includes("single user");
+          const isComplex =
+            promptLower.includes("users") ||
+            promptLower.includes("sites") ||
+            promptLower.includes("tenant") ||
+            promptLower.includes("entire") ||
+            promptLower.includes("all users") ||
+            promptLower.includes("host pool") ||
+            promptLower.includes("infrastructure");
+          const fallbackComplexity = isSimple
+            ? "simple"
+            : isComplex
+              ? "complex"
+              : "medium";
+          const fallbackModel = isSimple
+            ? CHEAP_MODEL
+            : isComplex
+              ? PREMIUM_MODEL
+              : MID_MODEL;
+          const fallbackRisk = isSimple ? "low" : isComplex ? "high" : "medium";
           classification = {
-            complexity: "medium",
-            risk: "medium",
-            model: MID_MODEL,
+            complexity: fallbackComplexity,
+            risk: fallbackRisk,
+            model: fallbackModel,
             reason: "Fallback - agent timeout",
             selfCorrected: true,
             confidence: 50,
