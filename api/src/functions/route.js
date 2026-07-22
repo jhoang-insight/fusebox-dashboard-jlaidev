@@ -36,6 +36,7 @@ const PREMIUM_COST_PER_1K = 0.007;
 const CONFIDENCE_THRESHOLD = 75;
 const ANOMALY_THRESHOLD = 2;
 const ANOMALY_WINDOW_MINUTES = 3;
+const AGENT_TIMEOUT = 25000;
 
 const UNCERTAINTY_WORDS = [
   "unclear",
@@ -1018,7 +1019,7 @@ app.http("route", {
         context,
       );
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Agent timeout")), 55000),
+        setTimeout(() => reject(new Error("Agent timeout")), AGENT_TIMEOUT),
       );
       classification = await Promise.race([agentPromise, timeoutPromise]);
       context.log("FuseBox agent classification:", classification);
