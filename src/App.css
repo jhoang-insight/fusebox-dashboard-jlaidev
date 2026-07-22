@@ -1731,3 +1731,13 @@ body {
   color: #888;
   margin-top: 2px;
 }
+
+/* AI RESPONSE BOX — TALLER */
+.ai-response {
+  max-height: 200px !important;
+}
+
+/* LOG ENTRY CARD — MORE BREATHING ROOM */
+.log-entry {
+  padding: 22px 24px;
+}

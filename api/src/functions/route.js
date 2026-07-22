@@ -37,6 +37,7 @@ const CONFIDENCE_THRESHOLD = 75;
 const ANOMALY_THRESHOLD = 2;
 const ANOMALY_WINDOW_MINUTES = 3;
 const AGENT_TIMEOUT = 25000;
+const CORRECTION_TIMEOUT = 15000;
 
 const UNCERTAINTY_WORDS = [
   "unclear",
@@ -729,44 +730,60 @@ async function callFuseBoxAgentWithSelfCorrection(
 
   const correctionPrompt = `TICKET: ${prompt}\n\nYour previous classification was ${firstResult.complexity} with confidence ${firstResult.confidence}/100 and reason: "${firstResult.reason}"\n\nYou expressed uncertainty. Please reconsider carefully. Focus on:\n- How many users are affected? Only classify complex if explicitly stated as large-scale.\n- Is this tenant-wide or isolated?\n- Does this involve infrastructure, identity, or security?\n- What is the business impact if unresolved?\n\nProvide a definitive classification with high confidence. Include confidence score in your JSON.`;
 
-  const correctionRes = await fetch(AGENT_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "api-key": API_KEY,
-      "Foundry-Features": "HostedAgents=V1Preview",
-    },
-    body: JSON.stringify({ input: correctionPrompt, stream: false }),
-  });
+  try {
+    const correctionPromise = fetch(AGENT_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": API_KEY,
+        "Foundry-Features": "HostedAgents=V1Preview",
+      },
+      body: JSON.stringify({ input: correctionPrompt, stream: false }),
+    });
 
-  if (!correctionRes.ok) return { ...firstResult, selfCorrected: true };
+    const correctionTimeoutPromise = new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error("Correction timeout")),
+        CORRECTION_TIMEOUT,
+      ),
+    );
 
-  const correctionData = await correctionRes.json();
-  const correctionText = correctionData?.output?.[0]?.content?.[0]?.text;
-  if (!correctionText) return { ...firstResult, selfCorrected: true };
+    const correctionRes = await Promise.race([
+      correctionPromise,
+      correctionTimeoutPromise,
+    ]);
+    if (!correctionRes.ok) return { ...firstResult, selfCorrected: true };
 
-  const correctionCleaned = correctionText.replace(/```json|```/g, "").trim();
-  const correctionMatch = correctionCleaned.match(/\{[\s\S]*\}/);
-  if (!correctionMatch) return { ...firstResult, selfCorrected: true };
+    const correctionData = await correctionRes.json();
+    const correctionText = correctionData?.output?.[0]?.content?.[0]?.text;
+    if (!correctionText) return { ...firstResult, selfCorrected: true };
 
-  const correctionParsed = JSON.parse(correctionMatch[0]);
-  const validModels = [CHEAP_MODEL, MID_MODEL, PREMIUM_MODEL];
+    const correctionCleaned = correctionText.replace(/```json|```/g, "").trim();
+    const correctionMatch = correctionCleaned.match(/\{[\s\S]*\}/);
+    if (!correctionMatch) return { ...firstResult, selfCorrected: true };
 
-  context.log("Self-correction result:", correctionParsed);
+    const correctionParsed = JSON.parse(correctionMatch[0]);
+    const validModels = [CHEAP_MODEL, MID_MODEL, PREMIUM_MODEL];
 
-  return {
-    complexity: correctionParsed.complexity || firstResult.complexity,
-    risk: correctionParsed.risk || firstResult.risk,
-    model: validModels.includes(correctionParsed.model)
-      ? correctionParsed.model
-      : firstResult.model,
-    reason: `[Self-corrected] ${correctionParsed.reason || firstResult.reason}`,
-    confidence:
-      typeof correctionParsed.confidence === "number"
-        ? correctionParsed.confidence
-        : firstResult.confidence,
-    selfCorrected: true,
-  };
+    context.log("Self-correction result:", correctionParsed);
+
+    return {
+      complexity: correctionParsed.complexity || firstResult.complexity,
+      risk: correctionParsed.risk || firstResult.risk,
+      model: validModels.includes(correctionParsed.model)
+        ? correctionParsed.model
+        : firstResult.model,
+      reason: `[Self-corrected] ${correctionParsed.reason || firstResult.reason}`,
+      confidence:
+        typeof correctionParsed.confidence === "number"
+          ? correctionParsed.confidence
+          : firstResult.confidence,
+      selfCorrected: true,
+    };
+  } catch (e) {
+    context.log("Self-correction timed out or failed:", e.message);
+    return { ...firstResult, selfCorrected: true };
+  }
 }
 
 async function callAuditor(prompt, classification, context) {
@@ -1075,6 +1092,10 @@ app.http("route", {
     let { complexity, risk, model, reason, selfCorrected, confidence } =
       classification;
 
+    // Capture original complexity BEFORE confidence escalation or auditor override
+    // This is what gets passed to checkAnomaly to prevent false anomaly triggers
+    const originalComplexity = complexity;
+
     let confidenceEscalated = false;
     if (confidence < CONFIDENCE_THRESHOLD) {
       if (model === CHEAP_MODEL) {
@@ -1156,8 +1177,14 @@ app.http("route", {
     });
     context.log("Memory written for ticket:", ticketId);
 
-    const anomalyResult = await checkAnomaly(complexity);
-    context.log("Anomaly check:", anomalyResult);
+    // Use originalComplexity for anomaly check — not the escalated or auditor-overridden value
+    const anomalyResult = await checkAnomaly(originalComplexity);
+    context.log(
+      "Anomaly check (original complexity:",
+      originalComplexity,
+      "):",
+      anomalyResult,
+    );
 
     let anomalyEscalated = false;
     let reportUrl = null;
