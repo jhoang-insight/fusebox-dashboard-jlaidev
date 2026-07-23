@@ -10,7 +10,7 @@
 
 🔗 [Launch FuseBox AI Ops](https://polite-stone-0c7f55c10.7.azurestaticapps.net)
 
-> Access code required. Contact Team Token Burners for credentials.
+> Access code: TokenBurners2026
 
 ---
 
@@ -58,13 +58,13 @@ This section is written specifically for judges and reviewers evaluating FuseBox
 - The dashboard starts empty — all counters at zero — this is correct
 - Every ticket you submit goes through a live multi-agent AI chain in real time — there is no pre-loaded demo data
 - Routing decisions may take 10 to 60 seconds depending on agent response time — this is normal and expected
-- Occasionally the AI agent will time out after 55 seconds and fall back to a rule-based classification — the routing reason will show "Fallback - agent timeout" — this is intentional architecture, not an error — the system still produces a correct result
+- Occasionally the AI agent will time out and fall back to a rule-based classification — the routing reason will show "Fallback - agent timeout" — this is intentional architecture, not an error — the system still produces a correct result
 
 ---
 
 ### Recommended Demo Sequence — Follow This Order
 
-Work through these five tickets in order. Each one is designed to demonstrate a specific capability of the platform.
+Work through these four tickets in order. Each one is designed to demonstrate a specific capability of the platform.
 
 ---
 
@@ -76,8 +76,7 @@ Paste this into the input field and click Submit or press Enter:
 
 **What to expect:**
 
-- Routes to phi-4-mini (simple) or DeepSeek-V4-Flash (medium) depending on agent confidence
-- If the agent times out, it will fall back and may route to Kimi-K2.6 with a confidence escalation badge — this is correct fallback behavior
+- Routes to phi-4-mini — simple, low risk
 - Self-corrected badge may appear if the agent detected uncertainty and re-evaluated
 - Confidence Escalated badge may appear if the confidence score was below 75
 - Quality Risk Distribution panel appears in the sidebar tracking this ticket's risk level
@@ -93,32 +92,14 @@ Paste this into the input field and click Submit or press Enter:
 
 **What to expect:**
 
-- Routes to DeepSeek-V4-Flash (medium) or Kimi-K2.6 (complex) depending on scope assessment
+- Routes to DeepSeek-V4-Flash — medium, medium risk
 - Memory Hit badge may appear — the agent retrieved past similar tickets from Cosmos DB and factored them into this decision
 - If a Memory Hit fires, the routing reason will explicitly cite which past ticket influenced the decision
 - Quality Risk Distribution updates in real time
 
 ---
 
-#### Ticket 3 — Ambiguous Issue
-
-Paste this into the input field and click Submit or press Enter:
-
-"A user is having some issues with something important"
-
-**What to expect:**
-
-- This ticket is intentionally vague — it is designed to stress-test the self-correction and auditor chain
-- Expect a longer response time — 30 to 90 seconds — the agent will detect uncertainty, trigger a self-correction cycle, and the auditor will independently review the classification
-- Self-corrected badge will appear
-- Auditor Confirmed or Auditor Override badge will appear
-- Confidence Escalated badge will likely appear
-- The triage response will correctly identify the ticket as too vague to classify and recommend gathering more information — this is the right answer for an ambiguous prompt
-- If the agent times out, the fallback will still produce a reasonable result
-
----
-
-#### Ticket 4 — Complex Infrastructure Failure
+#### Ticket 3 — Complex Infrastructure Failure
 
 Paste this into the input field and click Submit or press Enter:
 
@@ -128,22 +109,21 @@ Paste this into the input field and click Submit or press Enter:
 
 - Routes to Kimi-K2.6 — complex, high risk
 - Knowledge Base Match fires — FuseBox AI Ops has a known issue pattern for AVD outages
-- 92% confidence — high enough that no self-correction or auditor review is needed
-- Memory Hit badge appears if past similar tickets exist in memory
-- No anomaly on this ticket alone — anomaly requires 2 same-complexity tickets within 3 minutes
+- Auditor Confirmed badge may appear — the independent FuseBox-Auditor agent reviewed and agreed with the primary classification
+- No anomaly on this ticket alone — anomaly requires 2 similar tickets within 3 minutes
 - Triage response is detailed and technically specific to AVD infrastructure
 
 ---
 
-#### Ticket 5 — Anomaly Trigger
+#### Ticket 4 — Anomaly Trigger
 
-Wait a few seconds then submit the exact same ticket again:
+Submit the exact same ticket again immediately:
 
 "47 users cannot access Azure Virtual Desktop across three sites. Host pool appears down."
 
 **What to expect — this is the most important step:**
 
-- Anomaly badge fires — FuseBox AI Ops detected 2 complex tickets within 3 minutes
+- Anomaly badge fires — FuseBox AI Ops detected 2 similar tickets within 3 minutes
 - Ticket is automatically escalated to Kimi-K2.6 for advanced triage
 - Auto-Created Incident Records panel appears in the sidebar with a new INC number
 - View Full Incident Report link appears on the card — click it to open the full HTML incident report in a new tab
@@ -154,7 +134,7 @@ Wait a few seconds then submit the exact same ticket again:
 
 ### Closing the Loop — Resolution Feedback
 
-After submitting Ticket 5, use the feedback bar at the bottom of the most recent card:
+After submitting Ticket 4, use the feedback bar at the bottom of the most recent card:
 
 - Click **✓ Resolved**, **⬆️ Escalated**, or **✕ Failed**
 - The confirmed badge appears on the card with a View Incident Report link
@@ -201,13 +181,13 @@ This is the feedback loop — the system learns from outcomes, not just patterns
 
 ### Known Behaviors — Not Errors
 
-**Agent timeout fallback** — the Foundry hosted agent endpoint has variable latency. On some requests the agent times out after 55 seconds and the system falls back to a rule-based classification. The routing reason will show "Fallback - agent timeout." The fallback produces correct results. This is intentional architecture preserved to demonstrate graceful degradation.
+**Agent timeout fallback** — the Foundry hosted agent endpoint has variable latency. On some requests the agent times out and the system falls back to a rule-based classification. The routing reason will show "Fallback - agent timeout." The fallback produces correct results. This is intentional architecture preserved to demonstrate graceful degradation.
 
-**Anomaly sensitivity** — the anomaly threshold is set to 2 tickets of the same complexity within a 3-minute window. If you submit multiple tickets of the same complexity quickly, an anomaly may fire. This is correct behavior — the system is designed to detect pattern spikes in real time.
+**Anomaly sensitivity** — the anomaly threshold is set to 2 similar tickets within a 3-minute window. Submit Tickets 3 and 4 within 2 minutes of each other to ensure the anomaly fires reliably.
 
 **Memory influence** — as you submit more tickets, the memory context grows. Later tickets will show Memory Hit badges and routing reasons that explicitly cite past tickets. This is the persistent memory system working as intended.
 
-**Response time variation** — simple tickets with high confidence route in 10 to 20 seconds. Complex or ambiguous tickets that trigger self-correction and auditor review may take 30 to 90 seconds. This reflects the full multi-agent chain running in real time.
+**Response time variation** — simple tickets route in 10 to 30 seconds. Complex tickets may take 20 to 45 seconds. This reflects the full multi-agent chain running in real time.
 
 **Budget meter** — the session budget limit is set low intentionally for demo purposes. If the budget threshold or limit is reached, alert banners appear and email alerts fire automatically. Reset Session clears all counters and starts fresh.
 
@@ -231,13 +211,13 @@ FuseBox AI Ops demonstrates all five core dimensions of agentic AI in a producti
 
 Every ticket submitted goes through the following autonomous chain:
 
-1. **Knowledge Base Check** — semantic match against 25+ known IT issue patterns
+1. **Knowledge Base Check** — semantic match against known IT issue patterns
 2. **Memory Retrieval** — top 3 similar past tickets retrieved from Cosmos DB including resolution outcomes
-3. **Primary Classification** — FuseBox Agent (v3) classifies complexity, risk, model, confidence, and routing reason
+3. **Primary Classification** — FuseBox Agent classifies complexity, risk, model, confidence, and routing reason
 4. **Self-Correction Loop** — if confidence is below 75 or uncertainty language is detected, the agent re-evaluates with a focused correction prompt
 5. **Auditor Review** — FuseBox-Auditor independently reviews every classification below 90% confidence and can confirm or override
 6. **Model Assignment** — ticket is routed to the appropriate model based on complexity and cost
-7. **Anomaly Detection** — if 2 or more same-complexity tickets appear within 3 minutes, anomaly fires automatically
+7. **Anomaly Detection** — if 2 or more similar tickets appear within 3 minutes, anomaly fires automatically
 8. **Incident Response** — anomaly triggers escalation to Kimi-K2.6, HTML incident report generation, blob upload, SAS URL, and ACS email alert
 9. **Feedback Loop** — resolution outcome written back to Cosmos DB and injected into future memory context
 
@@ -301,8 +281,13 @@ Every ticket submitted goes through the following autonomous chain:
 - Resolution feedback loop — close the loop directly from the dashboard
 - Export Report — full CSV of session data
 - Expandable decision cards — full modal view of every routing decision
+- Response time badge — actual seconds displayed on every card
 
 ---
+
+## Team Token Burners
+
+Jimmy Hoang — Collin Whitman — Dave Epperson — Marcin Janowski — Sheldon Rollins
 
 ---
 
