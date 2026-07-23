@@ -1079,10 +1079,10 @@ app.http("route", {
             promptLower.includes("users") ||
             promptLower.includes("sites") ||
             promptLower.includes("tenant") ||
-            promptLower.includes("entire") ||
             promptLower.includes("all users") ||
             promptLower.includes("host pool") ||
             promptLower.includes("infrastructure");
+
           const fallbackComplexity = isSimple
             ? "simple"
             : isComplex
@@ -1115,10 +1115,10 @@ app.http("route", {
           promptLower.includes("users") ||
           promptLower.includes("sites") ||
           promptLower.includes("tenant") ||
-          promptLower.includes("entire") ||
           promptLower.includes("all users") ||
           promptLower.includes("host pool") ||
           promptLower.includes("infrastructure");
+
         const fallbackComplexity = isSimple
           ? "simple"
           : isComplex
