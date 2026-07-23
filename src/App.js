@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
 
 const DEMO_PASSWORD = "TokenBurners2026";
@@ -37,6 +37,7 @@ function generateCSV(
 
   const headers = [
     "Timestamp",
+    "Response Time (s)",
     "Model",
     "Complexity",
     "Risk",
@@ -50,6 +51,7 @@ function generateCSV(
   const rows = log.map((e) =>
     [
       escape(e.timestamp),
+      escape(e.responseTime ? e.responseTime + "s" : ""),
       escape(e.model),
       escape(e.complexity),
       escape(e.risk),
@@ -118,6 +120,8 @@ function App() {
   const [lowRiskCount, setLowRiskCount] = useState(0);
   const [mediumRiskCount, setMediumRiskCount] = useState(0);
   const [highRiskCount, setHighRiskCount] = useState(0);
+
+  const submitStartTime = useRef(null);
 
   useEffect(() => {
     document.title = "FuseBox AI Ops";
@@ -190,6 +194,7 @@ function App() {
   const handleLiveSubmit = async () => {
     if (!livePrompt.trim()) return;
     setLiveLoading(true);
+    submitStartTime.current = Date.now();
     try {
       const res = await fetch(
         "https://fusebox-api-burners.azurewebsites.net/api/route",
@@ -200,6 +205,9 @@ function App() {
         },
       );
       const data = await res.json();
+      const responseTime = Math.round(
+        (Date.now() - submitStartTime.current) / 1000,
+      );
       if (data.selfCorrected) setSelfCorrectionCount((prev) => prev + 1);
       if (data.memoryUsed && data.memoryUsed !== "No memory context yet")
         setMemoryHitCount((prev) => prev + 1);
@@ -241,6 +249,7 @@ function App() {
             second: "2-digit",
             hour12: true,
           }),
+          responseTime,
           prompt: data.prompt,
           complexity: data.complexity,
           model: data.model,
@@ -527,6 +536,11 @@ function App() {
               <div key={entry.id} className={`log-entry ${entry.complexity}`}>
                 <div className="log-header">
                   <span className="log-time">{entry.timestamp}</span>
+                  {entry.responseTime && (
+                    <span className="response-time-badge">
+                      ⚡ {entry.responseTime}s
+                    </span>
+                  )}
                   <span className="badge live-badge">LIVE</span>
                   <span
                     className={`badge ${entry.model === "phi-4-mini" ? "badge-cheap" : entry.model === "DeepSeek-V4-Flash" ? "badge-mid" : "badge-expensive"}`}
@@ -589,45 +603,26 @@ function App() {
                   )}
                   {entry.memoryUsed &&
                     entry.memoryUsed !== "No memory context yet" && (
-                      <span
-                        className="memory-badge"
-                        title="This ticket was classified using context from similar past tickets stored in Cosmos DB"
-                      >
+                      <span className="memory-badge">
                         🧠 {entry.memoryUsed}
                       </span>
                     )}
                   {entry.selfCorrected && (
-                    <span
-                      className="correction-badge"
-                      title="The agent detected uncertainty in its first classification and re-evaluated to produce a higher confidence decision"
-                    >
-                      🔄 Self-corrected
-                    </span>
+                    <span className="correction-badge">🔄 Self-corrected</span>
                   )}
                   {entry.anomalyDetected && (
-                    <span
-                      className="anomaly-badge"
-                      title="FuseBox AI Ops detected a pattern spike and autonomously escalated this ticket and generated an incident report"
-                    >
+                    <span className="anomaly-badge">
                       🚨 Anomaly — {entry.anomalyCount} similar tickets
                     </span>
                   )}
                   {entry.confidenceEscalated && (
-                    <span
-                      className="correction-badge"
-                      title="Confidence score was below threshold — ticket was automatically escalated to a more capable model"
-                    >
+                    <span className="correction-badge">
                       ⬆️ Confidence escalated
                     </span>
                   )}
                   {entry.auditorResult && (
                     <span
                       className={`auditor-badge ${entry.auditorOverride ? "auditor-override" : "auditor-confirmed"}`}
-                      title={
-                        entry.auditorOverride
-                          ? `Auditor Override: ${entry.auditorResult}`
-                          : `Auditor Confirmed: ${entry.auditorResult}`
-                      }
                     >
                       🔍{" "}
                       {entry.auditorOverride
@@ -675,7 +670,6 @@ function App() {
                     ) : (
                       <>
                         <div className="feedback-prompt">
-                          <span className="feedback-pulse-dot" />
                           <span className="feedback-prompt-text">
                             Close the loop — select resolution outcome to write
                             back to memory:
@@ -693,7 +687,6 @@ function App() {
                               )
                             }
                             disabled={feedbackLoading}
-                            title="Mark this ticket as successfully resolved — outcome written to FuseBox AI Ops memory"
                           >
                             ✓ Resolved
                           </button>
@@ -708,7 +701,6 @@ function App() {
                               )
                             }
                             disabled={feedbackLoading}
-                            title="Mark this ticket as escalated to a higher tier — outcome written to FuseBox AI Ops memory"
                           >
                             ⬆️ Escalated
                           </button>
@@ -723,7 +715,6 @@ function App() {
                               )
                             }
                             disabled={feedbackLoading}
-                            title="Mark this ticket as failed to resolve — outcome written to FuseBox AI Ops memory"
                           >
                             ✕ Failed
                           </button>
@@ -999,34 +990,22 @@ function App() {
           <div className="sidebar-card">
             <div className="sidebar-card-title">Agentic Intelligence</div>
             <div className="intel-grid">
-              <div
-                className="intel-item"
-                title="Number of times the agent detected uncertainty and re-evaluated its own classification decision"
-              >
+              <div className="intel-item">
                 <span className="intel-icon">🔄</span>
                 <span className="intel-value">{selfCorrectionCount}</span>
                 <span className="intel-label">Self-Corrections</span>
               </div>
-              <div
-                className="intel-item"
-                title="Number of times past ticket memory from Cosmos DB influenced the routing decision"
-              >
+              <div className="intel-item">
                 <span className="intel-icon">🧠</span>
                 <span className="intel-value">{memoryHitCount}</span>
                 <span className="intel-label">Memory Hits</span>
               </div>
-              <div
-                className="intel-item"
-                title="Number of times the independent Auditor agent overrode the primary classification"
-              >
+              <div className="intel-item">
                 <span className="intel-icon">🔍</span>
                 <span className="intel-value">{auditorOverrideCount}</span>
                 <span className="intel-label">Auditor Overrides</span>
               </div>
-              <div
-                className="intel-item"
-                title="Number of times FuseBox AI Ops detected a ticket pattern spike and autonomously escalated to incident response"
-              >
+              <div className="intel-item">
                 <span className="intel-icon">🚨</span>
                 <span className="intel-value">{anomalyCount}</span>
                 <span className="intel-label">Anomalies</span>
@@ -1079,46 +1058,22 @@ function App() {
           <div className="sidebar-card">
             <div className="sidebar-card-title">System Status</div>
             <div className="status-list">
-              <div className="status-row">
-                <span className="status-dot dot-online"></span>
-                <span className="status-name">FuseBox Agent</span>
-                <span className="status-tag">Foundry v3</span>
-              </div>
-              <div className="status-row">
-                <span className="status-dot dot-online"></span>
-                <span className="status-name">FuseBox-Auditor</span>
-                <span className="status-tag">DeepSeek</span>
-              </div>
-              <div className="status-row">
-                <span className="status-dot dot-online"></span>
-                <span className="status-name">Phi-4-mini</span>
-                <span className="status-tag">Simple</span>
-              </div>
-              <div className="status-row">
-                <span className="status-dot dot-online"></span>
-                <span className="status-name">DeepSeek-V4-Flash</span>
-                <span className="status-tag">Medium</span>
-              </div>
-              <div className="status-row">
-                <span className="status-dot dot-online"></span>
-                <span className="status-name">Kimi-K2.6</span>
-                <span className="status-tag">Complex</span>
-              </div>
-              <div className="status-row">
-                <span className="status-dot dot-online"></span>
-                <span className="status-name">Cosmos DB Memory</span>
-                <span className="status-tag">Active</span>
-              </div>
-              <div className="status-row">
-                <span className="status-dot dot-online"></span>
-                <span className="status-name">Knowledge Base</span>
-                <span className="status-tag">File Search</span>
-              </div>
-              <div className="status-row">
-                <span className="status-dot dot-online"></span>
-                <span className="status-name">Email Alerts</span>
-                <span className="status-tag">ACS Live</span>
-              </div>
+              {[
+                ["FuseBox Agent", "Foundry v3"],
+                ["FuseBox-Auditor", "DeepSeek"],
+                ["Phi-4-mini", "Simple"],
+                ["DeepSeek-V4-Flash", "Medium"],
+                ["Kimi-K2.6", "Complex"],
+                ["Cosmos DB Memory", "Active"],
+                ["Knowledge Base", "File Search"],
+                ["Email Alerts", "ACS Live"],
+              ].map(([name, tag]) => (
+                <div key={name} className="status-row">
+                  <span className="status-dot dot-online"></span>
+                  <span className="status-name">{name}</span>
+                  <span className="status-tag">{tag}</span>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -1175,6 +1130,11 @@ function App() {
             </button>
             <div className="modal-log-header">
               <span className="log-time">{expandedEntry.timestamp}</span>
+              {expandedEntry.responseTime && (
+                <span className="response-time-badge">
+                  ⚡ {expandedEntry.responseTime}s
+                </span>
+              )}
               <span className="badge live-badge">LIVE</span>
               <span
                 className={`badge ${expandedEntry.model === "phi-4-mini" ? "badge-cheap" : expandedEntry.model === "DeepSeek-V4-Flash" ? "badge-mid" : "badge-expensive"}`}
@@ -1216,10 +1176,9 @@ function App() {
               <span>Tokens: {expandedEntry.tokens}</span>
               <span>Cost: ${expandedEntry.cost}</span>
               <span>
-                Savings:{" "}
                 {expandedEntry.savings === "N/A"
-                  ? "N/A"
-                  : `$${expandedEntry.savings}`}
+                  ? "Savings: N/A"
+                  : `Savings: $${expandedEntry.savings}`}
               </span>
               {expandedEntry.confidence > 0 && (
                 <span
@@ -1230,45 +1189,26 @@ function App() {
               )}
               {expandedEntry.memoryUsed &&
                 expandedEntry.memoryUsed !== "No memory context yet" && (
-                  <span
-                    className="memory-badge"
-                    title="This ticket was classified using context from similar past tickets stored in Cosmos DB"
-                  >
+                  <span className="memory-badge">
                     🧠 {expandedEntry.memoryUsed}
                   </span>
                 )}
               {expandedEntry.selfCorrected && (
-                <span
-                  className="correction-badge"
-                  title="The agent detected uncertainty in its first classification and re-evaluated to produce a higher confidence decision"
-                >
-                  🔄 Self-corrected
-                </span>
+                <span className="correction-badge">🔄 Self-corrected</span>
               )}
               {expandedEntry.anomalyDetected && (
-                <span
-                  className="anomaly-badge"
-                  title="FuseBox AI Ops detected a pattern spike and autonomously escalated this ticket and generated an incident report"
-                >
+                <span className="anomaly-badge">
                   🚨 Anomaly — {expandedEntry.anomalyCount} similar tickets
                 </span>
               )}
               {expandedEntry.confidenceEscalated && (
-                <span
-                  className="correction-badge"
-                  title="Confidence score was below threshold — ticket was automatically escalated to a more capable model"
-                >
+                <span className="correction-badge">
                   ⬆️ Confidence escalated
                 </span>
               )}
               {expandedEntry.auditorResult && (
                 <span
                   className={`auditor-badge ${expandedEntry.auditorOverride ? "auditor-override" : "auditor-confirmed"}`}
-                  title={
-                    expandedEntry.auditorOverride
-                      ? `Auditor Override: ${expandedEntry.auditorResult}`
-                      : `Auditor Confirmed: ${expandedEntry.auditorResult}`
-                  }
                 >
                   🔍{" "}
                   {expandedEntry.auditorOverride
@@ -1317,7 +1257,6 @@ function App() {
                   ) : (
                     <>
                       <div className="feedback-prompt">
-                        <span className="feedback-pulse-dot" />
                         <span className="feedback-prompt-text">
                           Close the loop — select resolution outcome to write
                           back to memory:
@@ -1336,7 +1275,6 @@ function App() {
                             setExpandedEntry(null);
                           }}
                           disabled={feedbackLoading}
-                          title="Mark this ticket as successfully resolved — outcome written to FuseBox AI Ops memory"
                         >
                           ✓ Resolved
                         </button>
@@ -1352,7 +1290,6 @@ function App() {
                             setExpandedEntry(null);
                           }}
                           disabled={feedbackLoading}
-                          title="Mark this ticket as escalated to a higher tier — outcome written to FuseBox AI Ops memory"
                         >
                           ⬆️ Escalated
                         </button>
@@ -1368,7 +1305,6 @@ function App() {
                             setExpandedEntry(null);
                           }}
                           disabled={feedbackLoading}
-                          title="Mark this ticket as failed to resolve — outcome written to FuseBox AI Ops memory"
                         >
                           ✕ Failed
                         </button>
