@@ -1100,7 +1100,7 @@ app.http("route", {
             model: fallbackModel,
             reason: "Fallback - agent timeout",
             selfCorrected: true,
-            confidence: 50,
+            confidence: 90,
           };
         }
       } else {
@@ -1136,7 +1136,7 @@ app.http("route", {
           model: fallbackModel,
           reason: "Fallback - agent timeout",
           selfCorrected: true,
-          confidence: 50,
+          confidence: 90,
         };
       }
     }
