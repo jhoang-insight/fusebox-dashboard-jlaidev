@@ -4,7 +4,7 @@ import "./App.css";
 const DEMO_PASSWORD = "TokenBurners2026";
 
 const BUDGET_LIMIT = 0.014;
-const ALERT_THRESHOLD = 0.01;
+const ALERT_THRESHOLD = 0.006;
 
 const ANNUAL_TICKET_VOLUME = 50000;
 
