@@ -1741,3 +1741,13 @@ body {
 .log-entry {
   padding: 22px 24px;
 }
+
+.modal-card > * {
+  flex-shrink: 0;
+}
+
+.modal-ai-response {
+  max-height: none !important;
+  overflow-y: visible !important;
+  flex-shrink: 0;
+}
