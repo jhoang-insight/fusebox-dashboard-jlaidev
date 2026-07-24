@@ -1822,7 +1822,7 @@ body {
 .has-tooltip::after {
   content: attr(data-tooltip);
   position: absolute;
-  bottom: calc(100% + 8px);
+  top: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
   background: #1a0a2e;
@@ -1848,11 +1848,11 @@ body {
 .has-tooltip::before {
   content: "";
   position: absolute;
-  bottom: calc(100% + 2px);
+  top: calc(100% + 2px);
   left: 50%;
   transform: translateX(-50%);
   border: 6px solid transparent;
-  border-top-color: #d30e8c;
+  border-bottom-color: #d30e8c;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.15s ease;
@@ -1864,13 +1864,13 @@ body {
   opacity: 1;
 }
 
-/* Prevent tooltip from clipping off left edge on first badge */
+/* Prevent tooltip from clipping off left edge */
 .log-header .has-tooltip:first-of-type::after {
   left: 0;
   transform: translateX(0);
 }
 
-/* Prevent tooltip from clipping off right edge on last badge */
+/* Prevent tooltip from clipping off right edge */
 .log-header .has-tooltip:last-of-type::after {
   left: auto;
   right: 0;
