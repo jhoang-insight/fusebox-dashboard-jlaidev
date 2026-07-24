@@ -372,7 +372,6 @@ body {
   animation: slideIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
   border: 1px solid #3a2560;
   border-left-width: 5px;
-  overflow: hidden;
   transition:
     box-shadow 0.2s,
     transform 0.2s;
@@ -572,7 +571,6 @@ body {
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid #3a2560;
-  overflow: hidden;
 }
 
 .log-footer > span:not([class]) {
