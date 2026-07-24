@@ -903,7 +903,10 @@ function App() {
           <div className="sidebar-card">
             <div className="sidebar-card-title">Model Distribution</div>
             <div className="model-dist">
-              <div className="model-dist-row">
+              <div
+                className="model-dist-row has-tooltip"
+                data-tooltip="Phi-4-mini — cheapest model at $0.0001 per 1K tokens, assigned to simple single-user tickets with low scope and no cascading risk"
+              >
                 <div className="model-dist-info">
                   <span className="model-dist-dot dot-cheap"></span>
                   <span className="model-dist-name">Phi-4-mini</span>
@@ -924,7 +927,10 @@ function App() {
                   <span className="model-dist-count">{cheapCount}</span>
                 </div>
               </div>
-              <div className="model-dist-row">
+              <div
+                className="model-dist-row has-tooltip"
+                data-tooltip="DeepSeek-V4-Flash — mid-tier model at $0.0014 per 1K tokens, assigned to medium complexity tickets with broader user impact"
+              >
                 <div className="model-dist-info">
                   <span className="model-dist-dot dot-mid"></span>
                   <span className="model-dist-name">DeepSeek</span>
@@ -945,7 +951,10 @@ function App() {
                   <span className="model-dist-count">{midCount}</span>
                 </div>
               </div>
-              <div className="model-dist-row">
+              <div
+                className="model-dist-row has-tooltip"
+                data-tooltip="Kimi-K2.6 — most powerful model at $0.007 per 1K tokens, reserved for complex infrastructure-level incidents requiring advanced triage"
+              >
                 <div className="model-dist-info">
                   <span className="model-dist-dot dot-premium"></span>
                   <span className="model-dist-name">Kimi-K2.6</span>
@@ -1087,22 +1096,34 @@ function App() {
           <div className="sidebar-card">
             <div className="sidebar-card-title">Agentic Intelligence</div>
             <div className="intel-grid">
-              <div className="intel-item">
+              <div
+                className="intel-item has-tooltip"
+                data-tooltip="Self-Corrections — the agent reviewed its own reasoning and re-evaluated before responding because it was not confident enough in its first answer"
+              >
                 <span className="intel-icon">🔄</span>
                 <span className="intel-value">{selfCorrectionCount}</span>
                 <span className="intel-label">Self-Corrections</span>
               </div>
-              <div className="intel-item">
+              <div
+                className="intel-item has-tooltip"
+                data-tooltip="Memory Hits — FuseBox pulled similar past tickets from Cosmos DB and factored those outcomes into the routing decision"
+              >
                 <span className="intel-icon">🧠</span>
                 <span className="intel-value">{memoryHitCount}</span>
                 <span className="intel-label">Memory Hits</span>
               </div>
-              <div className="intel-item">
+              <div
+                className="intel-item has-tooltip"
+                data-tooltip="Auditor Overrides — a second independent AI agent disagreed with the primary classification and overrode the routing decision"
+              >
                 <span className="intel-icon">🔍</span>
                 <span className="intel-value">{auditorOverrideCount}</span>
                 <span className="intel-label">Auditor Overrides</span>
               </div>
-              <div className="intel-item">
+              <div
+                className="intel-item has-tooltip"
+                data-tooltip="Anomalies Detected — FuseBox identified a pattern of similar high-complexity tickets and triggered autonomous incident response without human intervention"
+              >
                 <span className="intel-icon">🚨</span>
                 <span className="intel-value">{anomalyCount}</span>
                 <span className="intel-label">Anomalies</span>
