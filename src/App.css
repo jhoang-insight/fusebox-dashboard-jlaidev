@@ -1301,8 +1301,8 @@ body {
 }
 
 .baseline-val {
-  color: #888;
-  text-decoration: line-through;
+  color: #c71616;
+  text-decoration: none;
 }
 .green-val {
   color: #4caf50;
@@ -1806,4 +1806,15 @@ body {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.badge-label {
+  display: block;
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.7;
+  margin-bottom: 2px;
+  font-weight: normal;
+  line-height: 1;
 }

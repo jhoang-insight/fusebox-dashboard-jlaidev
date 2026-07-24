@@ -538,21 +538,28 @@ function App() {
                   <span className="log-time">{entry.timestamp}</span>
                   {entry.responseTime && (
                     <span className="response-time-badge">
-                      ⚡ {entry.responseTime}s
+                      <span className="badge-label">Response Time</span>⚡{" "}
+                      {entry.responseTime}s
                     </span>
                   )}
                   <span className="badge live-badge">LIVE</span>
                   <span
                     className={`badge ${entry.model === "phi-4-mini" ? "badge-cheap" : entry.model === "DeepSeek-V4-Flash" ? "badge-mid" : "badge-expensive"}`}
                   >
+                    <span className="badge-label">Model</span>
                     {entry.model}
                   </span>
+
                   <span className={`badge complexity-${entry.complexity}`}>
+                    <span className="badge-label">Impact</span>
                     {entry.complexity}
                   </span>
+
                   <span className={`badge risk-${entry.risk}`}>
-                    {entry.risk} risk
+                    <span className="badge-label">Risk</span>
+                    {entry.risk}
                   </span>
+
                   <button
                     className="expand-btn"
                     onClick={() => setExpandedEntry(entry)}
@@ -598,12 +605,14 @@ function App() {
                     <span
                       className={`confidence-badge ${entry.confidence >= 75 ? "confidence-high" : "confidence-low"}`}
                     >
-                      {entry.confidence}% confidence
+                      <span className="badge-label">Confidence Score</span>
+                      {entry.confidence}%
                     </span>
                   )}
                   {entry.memoryUsed &&
                     entry.memoryUsed !== "No memory context yet" && (
                       <span className="memory-badge">
+                        <span className="badge-label">Memory Hit</span>
                         🧠 {entry.memoryUsed}
                       </span>
                     )}
@@ -1132,7 +1141,8 @@ function App() {
               <span className="log-time">{expandedEntry.timestamp}</span>
               {expandedEntry.responseTime && (
                 <span className="response-time-badge">
-                  ⚡ {expandedEntry.responseTime}s
+                  <span className="badge-label">Response Time</span>⚡{" "}
+                  {entry.responseTime}s
                 </span>
               )}
               <span className="badge live-badge">LIVE</span>
@@ -1141,11 +1151,14 @@ function App() {
               >
                 {expandedEntry.model}
               </span>
-              <span className={`badge complexity-${expandedEntry.complexity}`}>
-                {expandedEntry.complexity}
+              <span className={`badge complexity-${entry.complexity}`}>
+                <span className="badge-label">Impact</span>
+                {entry.complexity}
               </span>
-              <span className={`badge risk-${expandedEntry.risk}`}>
-                {expandedEntry.risk} risk
+
+              <span className={`badge risk-${entry.risk}`}>
+                <span className="badge-label">Risk</span>
+                {entry.risk}
               </span>
             </div>
             <p className="log-prompt">
@@ -1182,19 +1195,24 @@ function App() {
               </span>
               {expandedEntry.confidence > 0 && (
                 <span
-                  className={`confidence-badge ${expandedEntry.confidence >= 75 ? "confidence-high" : "confidence-low"}`}
+                  className={`confidence-badge ${entry.confidence >= 75 ? "confidence-high" : "confidence-low"}`}
                 >
-                  {expandedEntry.confidence}% confidence
+                  <span className="badge-label">Confidence Score</span>
+                  {entry.confidence}%
                 </span>
               )}
               {expandedEntry.memoryUsed &&
                 expandedEntry.memoryUsed !== "No memory context yet" && (
                   <span className="memory-badge">
-                    🧠 {expandedEntry.memoryUsed}
+                    <span className="badge-label">Memory Hit</span>
+                    🧠 {entry.memoryUsed}
                   </span>
                 )}
               {expandedEntry.selfCorrected && (
-                <span className="correction-badge">🔄 Self-corrected</span>
+                <span className="correction-badge">
+                  <span className="badge-label">Self-Corrected</span>
+                  🔄 Agent Re-Evaluated
+                </span>
               )}
               {expandedEntry.anomalyDetected && (
                 <span className="anomaly-badge">
