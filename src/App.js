@@ -1173,70 +1173,9 @@ function App() {
             </div>
           )}
 
-          <div className="sidebar-card">
-            <div className="sidebar-card-title">System Status</div>
-            <div className="status-list">
-              {[
-                ["FuseBox Agent", "Foundry v3"],
-                ["FuseBox-Auditor", "DeepSeek"],
-                ["Phi-4-mini", "Simple"],
-                ["DeepSeek-V4-Flash", "Medium"],
-                ["Kimi-K2.6", "Complex"],
-                ["Cosmos DB Memory", "Active"],
-                ["Knowledge Base", "File Search"],
-                ["Email Alerts", "ACS Live"],
-              ].map(([name, tag]) => (
-                <div key={name} className="status-row">
-                  <span className="status-dot dot-online"></span>
-                  <span className="status-name">{name}</span>
-                  <span className="status-tag">{tag}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          
 
-          <div className="sidebar-card">
-            <div className="sidebar-card-title">Session Stats</div>
-            <div className="session-stats">
-              <div className="session-stat-row">
-                <span className="session-stat-label">Total Processed</span>
-                <span className="session-stat-value">{totalProcessed}</span>
-              </div>
-              <div className="session-stat-row">
-                <span className="session-stat-label">Live Submissions</span>
-                <span className="session-stat-value">{liveCount}</span>
-              </div>
-              <div className="session-stat-row">
-                <span className="session-stat-label">Avg Cost / Ticket</span>
-                <span className="session-stat-value">
-                  {totalProcessed > 0
-                    ? formatCost(totalCost / totalProcessed)
-                    : "$0.000000"}
-                </span>
-              </div>
-              <div className="session-stat-row">
-                <span className="session-stat-label">Cost if All Kimi</span>
-                <span className="session-stat-value">
-                  {formatCost(totalCost + totalSavings)}
-                </span>
-              </div>
-              <div className="session-stat-row">
-                <span className="session-stat-label">Actual Cost</span>
-                <span className="session-stat-value highlight-green">
-                  {formatCost(totalCost)}
-                </span>
-              </div>
-              <div className="session-stat-row">
-                <span className="session-stat-label">Total Saved</span>
-                <span className="session-stat-value highlight-pink">
-                  {formatCost(totalSavings)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+          
       {expandedEntry && (
         <div className="modal-overlay" onClick={() => setExpandedEntry(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
