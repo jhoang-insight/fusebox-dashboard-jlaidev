@@ -40,11 +40,10 @@ FuseBox AI Ops autonomously governs every routing decision with a multi-agent ch
 
 - Up to **98.6% cost reduction** vs routing all tickets to the most expensive model
 - Projected annual savings of **$3K to $15K** at 50,000 tickets per year
-- Anomaly detection fires when a pattern spike is detected within a 3-minute window
+- Anomaly detection fires when a pattern spike is detected within a **5-minute window**
 - Email alerts fire within **60 seconds** of a budget threshold breach or anomaly
 - Auto-generated incident reports uploaded to Azure Blob Storage on every anomaly
 - Resolution outcomes written back to memory and factored into future routing decisions
-- **Agentic AI score: 9.6 / 10**
 
 ---
 
@@ -110,7 +109,7 @@ Paste this into the input field and click Submit or press Enter:
 - Routes to Kimi-K2.6 — complex, high risk
 - Knowledge Base Match fires — FuseBox AI Ops has a known issue pattern for AVD outages
 - Auditor Confirmed badge may appear — the independent FuseBox-Auditor agent reviewed and agreed with the primary classification
-- No anomaly on this ticket alone — anomaly requires 2 similar tickets within 3 minutes
+- No anomaly on this ticket alone — anomaly requires 2 similar tickets within 5 minutes
 - Triage response is detailed and technically specific to AVD infrastructure
 
 ---
@@ -123,7 +122,7 @@ Submit the exact same ticket again immediately:
 
 **What to expect — this is the most important step:**
 
-- Anomaly badge fires — FuseBox AI Ops detected 2 similar tickets within 3 minutes
+- Anomaly badge fires — FuseBox AI Ops detected 2 similar tickets within 5 minutes
 - Ticket is automatically escalated to Kimi-K2.6 for advanced triage
 - Auto-Created Incident Records panel appears in the sidebar with a new INC number
 - View Full Incident Report link appears on the card — click it to open the full HTML incident report in a new tab
@@ -173,17 +172,13 @@ This is the feedback loop — the system learns from outcomes, not just patterns
 
 **Auto-Created Incident Records** — all anomaly-triggered incidents with links to full HTML reports
 
-**System Status** — live status of all agents, models, memory, knowledge base, and email services
-
-**Session Stats** — total processed, live submissions, average cost per ticket, cost if all Kimi, actual cost, and total saved
-
 ---
 
 ### Known Behaviors — Not Errors
 
 **Agent timeout fallback** — the Foundry hosted agent endpoint has variable latency. On some requests the agent times out and the system falls back to a rule-based classification. The routing reason will show "Fallback - agent timeout." The fallback produces correct results. This is intentional architecture preserved to demonstrate graceful degradation.
 
-**Anomaly sensitivity** — the anomaly threshold is set to 2 similar tickets within a 3-minute window. Submit Tickets 3 and 4 within 2 minutes of each other to ensure the anomaly fires reliably.
+**Anomaly sensitivity** — the anomaly threshold is set to 2 similar tickets within a 5-minute window. Submit Tickets 3 and 4 within 4 minutes of each other to ensure the anomaly fires reliably.
 
 **Memory influence** — as you submit more tickets, the memory context grows. Later tickets will show Memory Hit badges and routing reasons that explicitly cite past tickets. This is the persistent memory system working as intended.
 
@@ -217,7 +212,7 @@ Every ticket submitted goes through the following autonomous chain:
 4. **Self-Correction Loop** — if confidence is below 75 or uncertainty language is detected, the agent re-evaluates with a focused correction prompt
 5. **Auditor Review** — FuseBox-Auditor independently reviews every classification below 90% confidence and can confirm or override
 6. **Model Assignment** — ticket is routed to the appropriate model based on complexity and cost
-7. **Anomaly Detection** — if 2 or more similar tickets appear within 3 minutes, anomaly fires automatically
+7. **Anomaly Detection** — if 2 or more similar tickets appear within 5 minutes, anomaly fires automatically
 8. **Incident Response** — anomaly triggers escalation to Kimi-K2.6, HTML incident report generation, blob upload, SAS URL, and ACS email alert
 9. **Feedback Loop** — resolution outcome written back to Cosmos DB and injected into future memory context
 
@@ -262,7 +257,7 @@ Every ticket submitted goes through the following autonomous chain:
 
 ## Foundry Agents
 
-- **FuseBox (v3)** — primary classification agent with File Search connected to the FuseBox AI Ops knowledge base
+- **FuseBox** — primary classification agent with File Search connected to the FuseBox AI Ops knowledge base
 - **FuseBox-Auditor** — independent quality control agent with File Search — reviews and can override primary classifications below 90% confidence
 
 ---
@@ -276,8 +271,6 @@ Every ticket submitted goes through the following autonomous chain:
 - Quality risk distribution — low, medium, high breakdown with weighted risk index
 - Agentic Intelligence panel — self-corrections, memory hits, auditor overrides, anomalies
 - Auto-Created Incident Records with live report links
-- System Status panel
-- Session Stats
 - Resolution feedback loop — close the loop directly from the dashboard
 - Export Report — full CSV of session data
 - Expandable decision cards — full modal view of every routing decision
