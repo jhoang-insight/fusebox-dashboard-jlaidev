@@ -90,7 +90,6 @@ function generateCSV(
   URL.revokeObjectURL(url);
 }
 
-// Tooltip wrapper component
 function TooltipBadge({ className, tooltip, children, href, target, rel }) {
   if (href) {
     return (
@@ -348,7 +347,6 @@ function App() {
     setFeedbackLoading(false);
   };
 
-  // Tooltip helpers
   const modelTooltip = (model) => {
     if (model === "phi-4-mini")
       return "Model: phi-4-mini — lowest cost model, selected for simple single-user tickets";
@@ -383,7 +381,7 @@ function App() {
       ? ((totalSavings / (totalCost + totalSavings)) * 100).toFixed(1)
       : 0;
   const budgetPct = Math.min((totalCost / BUDGET_LIMIT) * 100, 100).toFixed(0);
-  const liveCount = log.filter((e) => e.live).length;
+
   const annualSavings =
     totalProcessed > 0
       ? (totalSavings / totalProcessed) * ANNUAL_TICKET_VOLUME
@@ -580,7 +578,6 @@ function App() {
               <div key={entry.id} className={`log-entry ${entry.complexity}`}>
                 <div className="log-header">
                   <span className="log-time">{entry.timestamp}</span>
-
                   {entry.responseTime && (
                     <TooltipBadge
                       className="response-time-badge"
@@ -589,35 +586,30 @@ function App() {
                       ⚡ {entry.responseTime}s
                     </TooltipBadge>
                   )}
-
                   <TooltipBadge
                     className="badge live-badge"
                     tooltip="LIVE — this ticket was processed through the live FuseBox pipeline in real time, nothing cached"
                   >
                     LIVE
                   </TooltipBadge>
-
                   <TooltipBadge
                     className={`badge ${entry.model === "phi-4-mini" ? "badge-cheap" : entry.model === "DeepSeek-V4-Flash" ? "badge-mid" : "badge-expensive"}`}
                     tooltip={modelTooltip(entry.model)}
                   >
                     {entry.model}
                   </TooltipBadge>
-
                   <TooltipBadge
                     className={`badge complexity-${entry.complexity}`}
                     tooltip={impactTooltip(entry.complexity)}
                   >
                     {entry.complexity}
                   </TooltipBadge>
-
                   <TooltipBadge
                     className={`badge risk-${entry.risk}`}
                     tooltip={riskTooltip(entry.risk)}
                   >
                     {entry.risk}
                   </TooltipBadge>
-
                   <button
                     className="expand-btn"
                     onClick={() => setExpandedEntry(entry)}
@@ -662,7 +654,6 @@ function App() {
                     Savings:{" "}
                     {entry.savings === "N/A" ? "N/A" : `$${entry.savings}`}
                   </span>
-
                   {entry.confidence > 0 && (
                     <TooltipBadge
                       className={`confidence-badge ${entry.confidence >= 75 ? "confidence-high" : "confidence-low"}`}
@@ -671,7 +662,6 @@ function App() {
                       {entry.confidence}%
                     </TooltipBadge>
                   )}
-
                   {entry.memoryUsed &&
                     entry.memoryUsed !== "No memory context yet" && (
                       <TooltipBadge
@@ -681,7 +671,6 @@ function App() {
                         🧠 {entry.memoryUsed}
                       </TooltipBadge>
                     )}
-
                   {entry.selfCorrected && (
                     <TooltipBadge
                       className="correction-badge"
@@ -690,7 +679,6 @@ function App() {
                       🔄 Agent Re-Evaluated
                     </TooltipBadge>
                   )}
-
                   {entry.anomalyDetected && (
                     <TooltipBadge
                       className="anomaly-badge"
@@ -699,7 +687,6 @@ function App() {
                       🚨 Anomaly — {entry.anomalyCount} similar tickets
                     </TooltipBadge>
                   )}
-
                   {entry.confidenceEscalated && (
                     <TooltipBadge
                       className="correction-badge"
@@ -708,7 +695,6 @@ function App() {
                       ⬆️ Confidence Escalated
                     </TooltipBadge>
                   )}
-
                   {entry.auditorResult && (
                     <TooltipBadge
                       className={`auditor-badge ${entry.auditorOverride ? "auditor-override" : "auditor-confirmed"}`}
@@ -724,7 +710,6 @@ function App() {
                         : "Auditor Confirmed"}
                     </TooltipBadge>
                   )}
-
                   {entry.reportUrl && (
                     <TooltipBadge
                       className="report-link"
@@ -1172,10 +1157,9 @@ function App() {
               </div>
             </div>
           )}
+        </div>
+      </div>
 
-          
-
-          
       {expandedEntry && (
         <div className="modal-overlay" onClick={() => setExpandedEntry(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -1187,7 +1171,6 @@ function App() {
             </button>
             <div className="modal-log-header">
               <span className="log-time">{expandedEntry.timestamp}</span>
-
               {expandedEntry.responseTime && (
                 <TooltipBadge
                   className="response-time-badge"
@@ -1196,28 +1179,24 @@ function App() {
                   ⚡ {expandedEntry.responseTime}s
                 </TooltipBadge>
               )}
-
               <TooltipBadge
                 className="badge live-badge"
                 tooltip="LIVE — this ticket was processed through the live FuseBox pipeline in real time, nothing cached"
               >
                 LIVE
               </TooltipBadge>
-
               <TooltipBadge
                 className={`badge ${expandedEntry.model === "phi-4-mini" ? "badge-cheap" : expandedEntry.model === "DeepSeek-V4-Flash" ? "badge-mid" : "badge-expensive"}`}
                 tooltip={modelTooltip(expandedEntry.model)}
               >
                 {expandedEntry.model}
               </TooltipBadge>
-
               <TooltipBadge
                 className={`badge complexity-${expandedEntry.complexity}`}
                 tooltip={impactTooltip(expandedEntry.complexity)}
               >
                 {expandedEntry.complexity}
               </TooltipBadge>
-
               <TooltipBadge
                 className={`badge risk-${expandedEntry.risk}`}
                 tooltip={riskTooltip(expandedEntry.risk)}
@@ -1260,7 +1239,6 @@ function App() {
                   ? "Savings: N/A"
                   : `Savings: $${expandedEntry.savings}`}
               </span>
-
               {expandedEntry.confidence > 0 && (
                 <TooltipBadge
                   className={`confidence-badge ${expandedEntry.confidence >= 75 ? "confidence-high" : "confidence-low"}`}
@@ -1269,7 +1247,6 @@ function App() {
                   {expandedEntry.confidence}%
                 </TooltipBadge>
               )}
-
               {expandedEntry.memoryUsed &&
                 expandedEntry.memoryUsed !== "No memory context yet" && (
                   <TooltipBadge
@@ -1279,7 +1256,6 @@ function App() {
                     🧠 {expandedEntry.memoryUsed}
                   </TooltipBadge>
                 )}
-
               {expandedEntry.selfCorrected && (
                 <TooltipBadge
                   className="correction-badge"
@@ -1288,7 +1264,6 @@ function App() {
                   🔄 Agent Re-Evaluated
                 </TooltipBadge>
               )}
-
               {expandedEntry.anomalyDetected && (
                 <TooltipBadge
                   className="anomaly-badge"
@@ -1297,7 +1272,6 @@ function App() {
                   🚨 Anomaly — {expandedEntry.anomalyCount} similar tickets
                 </TooltipBadge>
               )}
-
               {expandedEntry.confidenceEscalated && (
                 <TooltipBadge
                   className="correction-badge"
@@ -1306,7 +1280,6 @@ function App() {
                   ⬆️ Confidence Escalated
                 </TooltipBadge>
               )}
-
               {expandedEntry.auditorResult && (
                 <TooltipBadge
                   className={`auditor-badge ${expandedEntry.auditorOverride ? "auditor-override" : "auditor-confirmed"}`}
@@ -1322,7 +1295,6 @@ function App() {
                     : "Auditor Confirmed"}
                 </TooltipBadge>
               )}
-
               {expandedEntry.reportUrl && (
                 <TooltipBadge
                   className="report-link"
