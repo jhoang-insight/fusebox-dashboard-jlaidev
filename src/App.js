@@ -90,6 +90,28 @@ function generateCSV(
   URL.revokeObjectURL(url);
 }
 
+// Tooltip wrapper component
+function TooltipBadge({ className, tooltip, children, href, target, rel }) {
+  if (href) {
+    return (
+      <a
+        href={href}
+        target={target}
+        rel={rel}
+        className={className + " has-tooltip"}
+        data-tooltip={tooltip}
+      >
+        {children}
+      </a>
+    );
+  }
+  return (
+    <span className={className + " has-tooltip"} data-tooltip={tooltip}>
+      {children}
+    </span>
+  );
+}
+
 function App() {
   const [unlocked, setUnlocked] = useState(
     () => localStorage.getItem("fb_unlocked") === "true",
@@ -285,13 +307,10 @@ function App() {
         (prev) =>
           prev + (data.savings !== "N/A" ? parseFloat(data.savings) : 0),
       );
-      if (data.model === "phi-4-mini") {
-        setCheapCount((prev) => prev + 1);
-      } else if (data.model === "DeepSeek-V4-Flash") {
+      if (data.model === "phi-4-mini") setCheapCount((prev) => prev + 1);
+      else if (data.model === "DeepSeek-V4-Flash")
         setMidCount((prev) => prev + 1);
-      } else {
-        setPremiumCount((prev) => prev + 1);
-      }
+      else setPremiumCount((prev) => prev + 1);
       setLivePrompt("");
     } catch (e) {
       console.error("Live route failed:", e);
@@ -327,6 +346,31 @@ function App() {
       console.error("Feedback failed:", err);
     }
     setFeedbackLoading(false);
+  };
+
+  // Tooltip helpers
+  const modelTooltip = (model) => {
+    if (model === "phi-4-mini")
+      return "Model: phi-4-mini — lowest cost model, selected for simple single-user tickets";
+    if (model === "DeepSeek-V4-Flash")
+      return "Model: DeepSeek-V4-Flash — mid-tier model, selected for medium complexity workloads";
+    return "Model: Kimi-K2.6 — most powerful and most expensive model, reserved for critical infrastructure incidents";
+  };
+
+  const impactTooltip = (complexity) => {
+    if (complexity === "simple")
+      return "Impact: Simple — single user, low scope, no broader risk to the organization";
+    if (complexity === "medium")
+      return "Impact: Medium — broader than a single user but not infrastructure-level failure";
+    return "Impact: Complex — infrastructure-level critical failure affecting large numbers of users or critical systems";
+  };
+
+  const riskTooltip = (risk) => {
+    if (risk === "low")
+      return "Risk: Low — no cascading impact expected, contained to a single user or isolated system";
+    if (risk === "medium")
+      return "Risk: Medium — potential for wider disruption if left unresolved";
+    return "Risk: High — significant cascading impact likely, critical systems or large user populations affected";
   };
 
   const totalProcessed = cheapCount + midCount + premiumCount;
@@ -536,29 +580,43 @@ function App() {
               <div key={entry.id} className={`log-entry ${entry.complexity}`}>
                 <div className="log-header">
                   <span className="log-time">{entry.timestamp}</span>
+
                   {entry.responseTime && (
-                    <span className="response-time-badge">
-                      <span className="badge-label">Response Time</span>⚡{" "}
-                      {entry.responseTime}s
-                    </span>
+                    <TooltipBadge
+                      className="response-time-badge"
+                      tooltip={`Response Time: ${entry.responseTime}s — total time from ticket submission to full agentic response`}
+                    >
+                      ⚡ {entry.responseTime}s
+                    </TooltipBadge>
                   )}
-                  <span className="badge live-badge">LIVE</span>
-                  <span
-                    className={`badge ${entry.model === "phi-4-mini" ? "badge-cheap" : entry.model === "DeepSeek-V4-Flash" ? "badge-mid" : "badge-expensive"}`}
+
+                  <TooltipBadge
+                    className="badge live-badge"
+                    tooltip="LIVE — this ticket was processed through the live FuseBox pipeline in real time, nothing cached"
                   >
-                    <span className="badge-label">Model</span>
+                    LIVE
+                  </TooltipBadge>
+
+                  <TooltipBadge
+                    className={`badge ${entry.model === "phi-4-mini" ? "badge-cheap" : entry.model === "DeepSeek-V4-Flash" ? "badge-mid" : "badge-expensive"}`}
+                    tooltip={modelTooltip(entry.model)}
+                  >
                     {entry.model}
-                  </span>
+                  </TooltipBadge>
 
-                  <span className={`badge complexity-${entry.complexity}`}>
-                    <span className="badge-label">Impact</span>
+                  <TooltipBadge
+                    className={`badge complexity-${entry.complexity}`}
+                    tooltip={impactTooltip(entry.complexity)}
+                  >
                     {entry.complexity}
-                  </span>
+                  </TooltipBadge>
 
-                  <span className={`badge risk-${entry.risk}`}>
-                    <span className="badge-label">Risk</span>
+                  <TooltipBadge
+                    className={`badge risk-${entry.risk}`}
+                    tooltip={riskTooltip(entry.risk)}
+                  >
                     {entry.risk}
-                  </span>
+                  </TooltipBadge>
 
                   <button
                     className="expand-btn"
@@ -568,10 +626,12 @@ function App() {
                     ⤢
                   </button>
                 </div>
+
                 <p className="log-prompt">
                   <span className="prompt-label">Prompt: </span>
                   {entry.prompt}
                 </p>
+
                 {(entry.aiResponse || entry.reason) && (
                   <div className="ai-response">
                     <span className="ai-response-label">
@@ -594,6 +654,7 @@ function App() {
                     )}
                   </div>
                 )}
+
                 <div className="log-footer">
                   <span>Tokens: {entry.tokens}</span>
                   <span>Cost: ${entry.cost}</span>
@@ -601,55 +662,82 @@ function App() {
                     Savings:{" "}
                     {entry.savings === "N/A" ? "N/A" : `$${entry.savings}`}
                   </span>
+
                   {entry.confidence > 0 && (
-                    <span
+                    <TooltipBadge
                       className={`confidence-badge ${entry.confidence >= 75 ? "confidence-high" : "confidence-low"}`}
+                      tooltip={`Confidence Score: ${entry.confidence}% — ${entry.confidence >= 90 ? "FuseBox is highly certain this routing decision is correct" : entry.confidence >= 75 ? "confidence is acceptable — routing proceeded as classified" : "confidence was below threshold — model was automatically escalated to a more capable tier"}`}
                     >
-                      <span className="badge-label">Confidence Score</span>
                       {entry.confidence}%
-                    </span>
+                    </TooltipBadge>
                   )}
+
                   {entry.memoryUsed &&
                     entry.memoryUsed !== "No memory context yet" && (
-                      <span className="memory-badge">
-                        <span className="badge-label">Memory Hit</span>
+                      <TooltipBadge
+                        className="memory-badge"
+                        tooltip={`Memory Hit — FuseBox pulled ${entry.memoryUsed} from Cosmos DB and used those outcomes to inform this routing decision`}
+                      >
                         🧠 {entry.memoryUsed}
-                      </span>
+                      </TooltipBadge>
                     )}
+
                   {entry.selfCorrected && (
-                    <span className="correction-badge">🔄 Self-corrected</span>
+                    <TooltipBadge
+                      className="correction-badge"
+                      tooltip="Self-Corrected — the agent was not confident enough in its first answer, so it reviewed its own reasoning and re-evaluated before responding"
+                    >
+                      🔄 Agent Re-Evaluated
+                    </TooltipBadge>
                   )}
+
                   {entry.anomalyDetected && (
-                    <span className="anomaly-badge">
+                    <TooltipBadge
+                      className="anomaly-badge"
+                      tooltip={`Anomaly Detected — FuseBox identified ${entry.anomalyCount} similar high-complexity tickets within the detection window and triggered autonomous incident response: escalation, report generation, blob upload, and email alert`}
+                    >
                       🚨 Anomaly — {entry.anomalyCount} similar tickets
-                    </span>
+                    </TooltipBadge>
                   )}
+
                   {entry.confidenceEscalated && (
-                    <span className="correction-badge">
-                      ⬆️ Confidence escalated
-                    </span>
+                    <TooltipBadge
+                      className="correction-badge"
+                      tooltip="Confidence Escalated — confidence score came back below the threshold so FuseBox automatically stepped up to a more capable and more expensive model"
+                    >
+                      ⬆️ Confidence Escalated
+                    </TooltipBadge>
                   )}
+
                   {entry.auditorResult && (
-                    <span
+                    <TooltipBadge
                       className={`auditor-badge ${entry.auditorOverride ? "auditor-override" : "auditor-confirmed"}`}
+                      tooltip={
+                        entry.auditorOverride
+                          ? "Auditor Override — a second independent AI agent reviewed the primary classification and disagreed — the auditor's decision overrides the original routing"
+                          : "Auditor Confirmed — a second independent AI agent reviewed the primary classification on its own and agreed — two agents, one answer"
+                      }
                     >
                       🔍{" "}
                       {entry.auditorOverride
                         ? "Auditor Override"
                         : "Auditor Confirmed"}
-                    </span>
+                    </TooltipBadge>
                   )}
+
                   {entry.reportUrl && (
-                    <a
+                    <TooltipBadge
+                      className="report-link"
+                      tooltip="View Full Incident Report — full HTML report generated and uploaded to Azure Blob Storage automatically, includes classification chain, cost analysis, memory context, and recommended actions"
                       href={entry.reportUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="report-link"
                     >
                       📄 View Full Incident Report
-                    </a>
+                    </TooltipBadge>
                   )}
                 </div>
+
                 {entry.ticketId && mostRecentLiveId === entry.id && (
                   <div className="feedback-bar">
                     {entry.feedbackSubmitted ? (
@@ -1139,32 +1227,50 @@ function App() {
             </button>
             <div className="modal-log-header">
               <span className="log-time">{expandedEntry.timestamp}</span>
+
               {expandedEntry.responseTime && (
-                <span className="response-time-badge">
-                  <span className="badge-label">Response Time</span>⚡{" "}
-                  {expandedEntry.responseTime}s
-                </span>
+                <TooltipBadge
+                  className="response-time-badge"
+                  tooltip={`Response Time: ${expandedEntry.responseTime}s — total time from ticket submission to full agentic response`}
+                >
+                  ⚡ {expandedEntry.responseTime}s
+                </TooltipBadge>
               )}
-              <span className="badge live-badge">LIVE</span>
-              <span
+
+              <TooltipBadge
+                className="badge live-badge"
+                tooltip="LIVE — this ticket was processed through the live FuseBox pipeline in real time, nothing cached"
+              >
+                LIVE
+              </TooltipBadge>
+
+              <TooltipBadge
                 className={`badge ${expandedEntry.model === "phi-4-mini" ? "badge-cheap" : expandedEntry.model === "DeepSeek-V4-Flash" ? "badge-mid" : "badge-expensive"}`}
+                tooltip={modelTooltip(expandedEntry.model)}
               >
                 {expandedEntry.model}
-              </span>
-              <span className={`badge complexity-${expandedEntry.complexity}`}>
-                <span className="badge-label">Impact</span>
-                {expandedEntry.complexity}
-              </span>
+              </TooltipBadge>
 
-              <span className={`badge risk-${expandedEntry.risk}`}>
-                <span className="badge-label">Risk</span>
+              <TooltipBadge
+                className={`badge complexity-${expandedEntry.complexity}`}
+                tooltip={impactTooltip(expandedEntry.complexity)}
+              >
+                {expandedEntry.complexity}
+              </TooltipBadge>
+
+              <TooltipBadge
+                className={`badge risk-${expandedEntry.risk}`}
+                tooltip={riskTooltip(expandedEntry.risk)}
+              >
                 {expandedEntry.risk}
-              </span>
+              </TooltipBadge>
             </div>
+
             <p className="log-prompt">
               <span className="prompt-label">Prompt: </span>
               {expandedEntry.prompt}
             </p>
+
             {(expandedEntry.aiResponse || expandedEntry.reason) && (
               <div className="ai-response modal-ai-response">
                 <span className="ai-response-label">AI Triage Response</span>
@@ -1185,6 +1291,7 @@ function App() {
                 )}
               </div>
             )}
+
             <div className="log-footer">
               <span>Tokens: {expandedEntry.tokens}</span>
               <span>Cost: ${expandedEntry.cost}</span>
@@ -1193,58 +1300,82 @@ function App() {
                   ? "Savings: N/A"
                   : `Savings: $${expandedEntry.savings}`}
               </span>
+
               {expandedEntry.confidence > 0 && (
-                <span
+                <TooltipBadge
                   className={`confidence-badge ${expandedEntry.confidence >= 75 ? "confidence-high" : "confidence-low"}`}
+                  tooltip={`Confidence Score: ${expandedEntry.confidence}% — ${expandedEntry.confidence >= 90 ? "FuseBox is highly certain this routing decision is correct" : expandedEntry.confidence >= 75 ? "confidence is acceptable — routing proceeded as classified" : "confidence was below threshold — model was automatically escalated to a more capable tier"}`}
                 >
-                  <span className="badge-label">Confidence Score</span>
                   {expandedEntry.confidence}%
-                </span>
+                </TooltipBadge>
               )}
+
               {expandedEntry.memoryUsed &&
                 expandedEntry.memoryUsed !== "No memory context yet" && (
-                  <span className="memory-badge">
-                    <span className="badge-label">Memory Hit</span>
+                  <TooltipBadge
+                    className="memory-badge"
+                    tooltip={`Memory Hit — FuseBox pulled ${expandedEntry.memoryUsed} from Cosmos DB and used those outcomes to inform this routing decision`}
+                  >
                     🧠 {expandedEntry.memoryUsed}
-                  </span>
+                  </TooltipBadge>
                 )}
+
               {expandedEntry.selfCorrected && (
-                <span className="correction-badge">
-                  <span className="badge-label">Self-Corrected</span>
+                <TooltipBadge
+                  className="correction-badge"
+                  tooltip="Self-Corrected — the agent was not confident enough in its first answer, so it reviewed its own reasoning and re-evaluated before responding"
+                >
                   🔄 Agent Re-Evaluated
-                </span>
+                </TooltipBadge>
               )}
+
               {expandedEntry.anomalyDetected && (
-                <span className="anomaly-badge">
+                <TooltipBadge
+                  className="anomaly-badge"
+                  tooltip={`Anomaly Detected — FuseBox identified ${expandedEntry.anomalyCount} similar high-complexity tickets within the detection window and triggered autonomous incident response: escalation, report generation, blob upload, and email alert`}
+                >
                   🚨 Anomaly — {expandedEntry.anomalyCount} similar tickets
-                </span>
+                </TooltipBadge>
               )}
+
               {expandedEntry.confidenceEscalated && (
-                <span className="correction-badge">
-                  ⬆️ Confidence escalated
-                </span>
+                <TooltipBadge
+                  className="correction-badge"
+                  tooltip="Confidence Escalated — confidence score came back below the threshold so FuseBox automatically stepped up to a more capable and more expensive model"
+                >
+                  ⬆️ Confidence Escalated
+                </TooltipBadge>
               )}
+
               {expandedEntry.auditorResult && (
-                <span
+                <TooltipBadge
                   className={`auditor-badge ${expandedEntry.auditorOverride ? "auditor-override" : "auditor-confirmed"}`}
+                  tooltip={
+                    expandedEntry.auditorOverride
+                      ? "Auditor Override — a second independent AI agent reviewed the primary classification and disagreed — the auditor's decision overrides the original routing"
+                      : "Auditor Confirmed — a second independent AI agent reviewed the primary classification on its own and agreed — two agents, one answer"
+                  }
                 >
                   🔍{" "}
                   {expandedEntry.auditorOverride
                     ? "Auditor Override"
                     : "Auditor Confirmed"}
-                </span>
+                </TooltipBadge>
               )}
+
               {expandedEntry.reportUrl && (
-                <a
+                <TooltipBadge
+                  className="report-link"
+                  tooltip="View Full Incident Report — full HTML report generated and uploaded to Azure Blob Storage automatically, includes classification chain, cost analysis, memory context, and recommended actions"
                   href={expandedEntry.reportUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="report-link"
                 >
                   📄 View Full Incident Report
-                </a>
+                </TooltipBadge>
               )}
             </div>
+
             {expandedEntry.ticketId &&
               mostRecentLiveId === expandedEntry.id && (
                 <div className="feedback-bar">

@@ -1808,13 +1808,71 @@ body {
   gap: 8px;
 }
 
+/* REMOVE old badge-label stacked layout */
 .badge-label {
-  display: block;
-  font-size: 8px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  opacity: 0.7;
-  margin-bottom: 2px;
+  display: none;
+}
+
+/* TOOLTIP SYSTEM */
+.has-tooltip {
+  position: relative;
+  cursor: default;
+}
+
+.has-tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a0a2e;
+  border: 1px solid #d30e8c;
+  color: #e0c8ff;
+  font-size: 11px;
   font-weight: normal;
-  line-height: 1;
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1.5;
+  padding: 8px 12px;
+  border-radius: 8px;
+  white-space: normal;
+  width: 220px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(211, 14, 140, 0.25);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 9999;
+}
+
+.has-tooltip::before {
+  content: "";
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #d30e8c;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 9999;
+}
+
+.has-tooltip:hover::after,
+.has-tooltip:hover::before {
+  opacity: 1;
+}
+
+/* Prevent tooltip from clipping off left edge on first badge */
+.log-header .has-tooltip:first-of-type::after {
+  left: 0;
+  transform: translateX(0);
+}
+
+/* Prevent tooltip from clipping off right edge on last badge */
+.log-header .has-tooltip:last-of-type::after {
+  left: auto;
+  right: 0;
+  transform: translateX(0);
 }
