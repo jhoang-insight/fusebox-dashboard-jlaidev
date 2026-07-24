@@ -1142,7 +1142,7 @@ function App() {
               {expandedEntry.responseTime && (
                 <span className="response-time-badge">
                   <span className="badge-label">Response Time</span>⚡{" "}
-                  {entry.responseTime}s
+                  {expandedEntry.responseTime}s
                 </span>
               )}
               <span className="badge live-badge">LIVE</span>
@@ -1153,7 +1153,7 @@ function App() {
               </span>
               <span className={`badge complexity-${entry.complexity}`}>
                 <span className="badge-label">Impact</span>
-                {entry.complexity}
+                {expandedEntry.complexity}
               </span>
 
               <span className={`badge risk-${entry.risk}`}>
@@ -1198,14 +1198,14 @@ function App() {
                   className={`confidence-badge ${entry.confidence >= 75 ? "confidence-high" : "confidence-low"}`}
                 >
                   <span className="badge-label">Confidence Score</span>
-                  {entry.confidence}%
+                  {expandedEntry.confidence}%
                 </span>
               )}
               {expandedEntry.memoryUsed &&
                 expandedEntry.memoryUsed !== "No memory context yet" && (
                   <span className="memory-badge">
                     <span className="badge-label">Memory Hit</span>
-                    🧠 {entry.memoryUsed}
+                    🧠 {expandedEntry.memoryUsed}
                   </span>
                 )}
               {expandedEntry.selfCorrected && (
