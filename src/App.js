@@ -1151,14 +1151,14 @@ function App() {
               >
                 {expandedEntry.model}
               </span>
-              <span className={`badge complexity-${entry.complexity}`}>
+              <span className={`badge complexity-${expandedEntry.complexity}`}>
                 <span className="badge-label">Impact</span>
                 {expandedEntry.complexity}
               </span>
 
-              <span className={`badge risk-${entry.risk}`}>
+              <span className={`badge risk-${expandedEntry.risk}`}>
                 <span className="badge-label">Risk</span>
-                {entry.risk}
+                {expandedEntry.risk}
               </span>
             </div>
             <p className="log-prompt">
@@ -1195,7 +1195,7 @@ function App() {
               </span>
               {expandedEntry.confidence > 0 && (
                 <span
-                  className={`confidence-badge ${entry.confidence >= 75 ? "confidence-high" : "confidence-low"}`}
+                  className={`confidence-badge ${expandedEntry.confidence >= 75 ? "confidence-high" : "confidence-low"}`}
                 >
                   <span className="badge-label">Confidence Score</span>
                   {expandedEntry.confidence}%
