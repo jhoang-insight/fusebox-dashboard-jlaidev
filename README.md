@@ -6,6 +6,10 @@
 
 ---
 
+## Demo Video
+
+🎬 [Watch FuseBox AI Ops — Full Demo](https://insightonline-my.sharepoint.com/:v:/g/personal/jimmy_hoang_insight_com/IQA8LawhKS2mT6NlDlK18rRYAX3HqY1anbAH7bu-WCjK5XM?e=JCCbkV)
+
 ## Live Dashboard
 
 🔗 [Launch FuseBox AI Ops](https://polite-stone-0c7f55c10.7.azurestaticapps.net)
