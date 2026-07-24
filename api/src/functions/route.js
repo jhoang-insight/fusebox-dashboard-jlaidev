@@ -35,7 +35,7 @@ const PREMIUM_COST_PER_1K = 0.007;
 
 const CONFIDENCE_THRESHOLD = 75;
 const ANOMALY_THRESHOLD = 2;
-const ANOMALY_WINDOW_MINUTES = 3;
+const ANOMALY_WINDOW_MINUTES = 5;
 const AGENT_TIMEOUT = 25000;
 const CORRECTION_TIMEOUT = 15000;
 
@@ -97,7 +97,7 @@ async function sendAlertEmail(subject, bodyText) {
         plainText: bodyText,
         html: `<html><body style="font-family:Arial,sans-serif;background:#0e0e14;color:white;padding:24px;">
           <div style="max-width:600px;margin:0 auto;background:#1a0a2e;border:1px solid #D30E8C;border-radius:12px;padding:24px;">
-            <h2 style="color:#D30E8C;margin-top:0;">FuseBox AI Ops — AI Spend Alert</h2>
+            <h2 style="color:#D30E8C;margin-top:0;">${subject}</h2>
             <p style="color:#ccc;">${bodyText.replace(/\n/g, "<br/>")}</p>
             <hr style="border-color:#582873;"/>
             <p style="color:#666;font-size:12px;">FuseBox AI Ops — Team Token Burners — Insight Hackathon 2026</p>
@@ -159,23 +159,56 @@ async function getMemoryContext(complexity) {
   }
 }
 
-async function checkAnomaly(complexity) {
+async function checkAnomaly(prompt, complexity) {
   try {
     const container = getCosmosContainer();
     const windowStart = new Date(
       Date.now() - ANOMALY_WINDOW_MINUTES * 60 * 1000,
     ).toISOString();
+
+    // Pull recent tickets within the window — same complexity only
     const query = {
       query:
-        "SELECT VALUE COUNT(1) FROM c WHERE c.complexity = @complexity AND c.timestamp >= @windowStart",
+        "SELECT c.prompt FROM c WHERE c.complexity = @complexity AND c.timestamp >= @windowStart",
       parameters: [
         { name: "@complexity", value: complexity },
         { name: "@windowStart", value: windowStart },
       ],
     };
     const { resources } = await container.items.query(query).fetchAll();
-    const count = resources[0] || 0;
-    return { anomalyDetected: count >= ANOMALY_THRESHOLD, count };
+
+    if (resources.length === 0) {
+      return { anomalyDetected: false, count: 0 };
+    }
+
+    // Tokenize incoming prompt — strip short words
+    const incomingWords = new Set(
+      prompt
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((w) => w.length > 3),
+    );
+
+    // Count how many past prompts are similar to the incoming prompt
+    let similarCount = 0;
+    for (const record of resources) {
+      const pastWords = record.prompt
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((w) => w.length > 3);
+      const overlap = pastWords.filter((w) => incomingWords.has(w)).length;
+      const similarity =
+        overlap / Math.max(incomingWords.size, pastWords.length, 1);
+      // Similarity threshold: 40% word overlap required to count as similar
+      if (similarity >= 0.4) {
+        similarCount++;
+      }
+    }
+
+    return {
+      anomalyDetected: similarCount >= ANOMALY_THRESHOLD,
+      count: similarCount,
+    };
   } catch (e) {
     console.error("Anomaly check failed:", e.message);
     return { anomalyDetected: false, count: 0 };
@@ -276,7 +309,7 @@ async function uploadReportToBlob(incidentId, htmlContent, context) {
     context.log("Report uploaded successfully:", filename);
 
     const expiresOn = new Date();
-    expiresOn.setHours(expiresOn.getHours() + 24);
+    expiresOn.setDate(expiresOn.getDate() + 30);
 
     const sasToken = generateBlobSASQueryParameters(
       {
@@ -1230,7 +1263,7 @@ app.http("route", {
     context.log("Memory written for ticket:", ticketId);
 
     // Use originalComplexity for anomaly check — not the escalated or auditor-overridden value
-    const anomalyResult = await checkAnomaly(originalComplexity);
+    const anomalyResult = await checkAnomaly(prompt, originalComplexity);
     context.log(
       "Anomaly check (original complexity:",
       originalComplexity,
